@@ -1,0 +1,25 @@
+{
+  "name": "vrc-osc-remote-server",
+  "version": "1.0.0",
+  "description": "Makes VRC avatar parameters accessible remotely",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.literalchaos.de/jan/vrc-osc-remote-server.git"
+  },
+  "keywords": [
+    "vrchat",
+    "osc",
+    "parameters"
+  ],
+  "author": "jangxx",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.3",
+    "node-osc": "^6.1.14",
+    "socket.io": "^4.4.1"
+  }
+}
