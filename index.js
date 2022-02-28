@@ -11,6 +11,9 @@ prompt.delimiter = "";
 
 const { Config } = require("./src/config");
 const { OscManager } = require("./src/osc_manager");
+const { VrcAvatarManager } = require("./src/vrc_avatar_manager");
+const { BoardManager } = require("./src/board_manager");
+const { SocketManager } = require("./src/socket_manager");
 const { requireLogin, requireLoginSocketIO, requireLoginInternal } = require("./src/require_login");
 const run = require("./src/express_async_middleware");
 
@@ -21,10 +24,14 @@ if (process.argv.length < 3) {
 
 const config = new Config(process.argv[2]);
 const oscManager = new OscManager(config);
+const avatarManager = new VrcAvatarManager(oscManager);
+const boardManager = new BoardManager(config);
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer);
+
+const socketManager = new SocketManager(io, boardManager, avatarManager);
 
 async function main() {
 	await config.init();
@@ -81,27 +88,33 @@ async function main() {
 		requireLoginSocketIO(socket.request, {}, next);
 	});
 
+	io.use((socket, next) => {
+		socket.data.boardId = socket.request.query.target;
+		next();
+	});
+
 	app.post("/api/login/:target", run(async function(req, res) {
 		if (!("password" in req.body)) {
 			return res.sendStatus(400);
 		}
 
-		let checkHash;
-		if (req.params.target != "admin") {
-			if (!config.existsKey("boards", req.params.target)) {
+		let check_result;
+		if (req.params.target !== "admin") {
+			if (!boardManager.boardExists(req.params.target)) {
 				return res.sendStatus(404);
 			}
 
-			checkHash = config.getKey("boards", req.params.target, "password");
+			const board = boardManager.getBoard(req.params.target);
 
-			if (checkHash == null) {
+			if (!board.hasPassword()) {
 				return res.sendStatus(400); // there is no password set up for this board
 			}
+
+			check_result = await board.checkPassword(req.body.password);
 		} else {
 			checkHash = config.getKey("admin", "password");
+			check_result = await bcrypt.compare(req.body.password, checkHash);
 		}
-
-		const check_result = bcrypt.compare(req.body.password, checkHash);
 
 		if (!check_result) {
 			return res.json({ success: false });
@@ -120,17 +133,23 @@ async function main() {
 	}));
 
 	app.get("/api/login/:target", run(async function(req, res) {
-		if (!config.existsKey("boards", req.params.target)) {
+		if (req.params.target !== "admin" && !boardManager.boardExists(req.params.target)) {
 			return res.sendStatus(404);
 		}
 
-		const checkHash = config.getKey("boards", req.params.target, "password");
+		let hasPassword;
+		if (req.params.target === "admin") {
+			hasPassword = true;
+		} else {
+			const board = boardManager.getBoard(req.params.target);
+			hasPassword = board.hasPassword();
+		}
 
 		if (!("logins" in req.session)) {
 			req.session.logins = {};
 		}
 
-		if (checkHash === null) { // no password required for this board, just set a login cookie
+		if (!hasPassword) { // no password required for this board, just set a login cookie
 			req.session.logins[req.params.target] = {
 				loggedIn: true,
 			};
@@ -149,6 +168,8 @@ async function main() {
 	console.log(`Server is listening on ${address}:${port}`);
 
 	oscManager.init();
+	avatarManager.init();
+	socketManager.init();
 }
 
 main().catch(err => {

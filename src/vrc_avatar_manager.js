@@ -18,6 +18,16 @@ class VrcAvatarManager extends EventEmitter {
 		};
 	}
 
+	_processParameterUpdate(paramName, value) {
+		this._currentAvatar.params[paramName] = value;
+					
+		this.emit("parameter", {
+			name: paramName,
+			value: value,
+			avatar: this._currentAvatar.id,
+		});
+	}
+
 	init() {
 		this._osc.on("message", msg => {
 			const m = msg.address.match(PARAM_RE);
@@ -26,19 +36,26 @@ class VrcAvatarManager extends EventEmitter {
 
 			switch (m.group(2)) {
 				case "change": // avatar was changed
-					// TODO: change and reset current avi, emit event, etc
+					const avatarId = msg.value;
+
+					this.emit("avatar", {
+						id: avatarId,
+					});
+
+					this._currentAvatar.id = avatarId;
+					this._currentAvatar.params = {};
+
+					this._buffer.getAll().forEach(msg => {
+						const m = msg.address.match(PARAM_RE);
+						this._processParameterUpdate(m.group(3), msg.value);
+					});
+
 					break;
 				case "parameters":
 					if (EXCLUDE_RE.test(m.group(3))) return;
 
 					this._buffer.add(msg.address, msg, 400);
-					this._currentAvatar.params[m.group(3)] = msg.value;
-					
-					this.emit("parameter", {
-						name: m.group(3),
-						value: msg.value,
-						avatar: this._currentAvatar.id,
-					});
+					this._processParameterUpdate(m.group(3), msg.value);
 
 					break;
 			}
@@ -51,6 +68,19 @@ class VrcAvatarManager extends EventEmitter {
 
 	getCurrentParams() {
 		return Object.assign({}, this._currentAvatar.params);
+	}
+
+	getParameter(paramName) {
+		if (paramName in this._currentAvatar.params) {
+			return this._currentAvatar.params[paramName];
+		} else {
+			return null;
+		}
+	}
+
+	async setParameter(paramName, value) {
+		await this._osc.sendMessage(`/avatar/parameters/${paramName}`, value);
+		// we're not updating the currentAvatar here. it will get updated soon after the game sends the update back to us
 	}
 }
 
