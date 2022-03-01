@@ -10,7 +10,7 @@ class VrcAvatarManager extends EventEmitter {
 		super();
 
 		this._osc = oscManager;
-		this._buffer = new TimedBuffer(32);
+		this._buffer = new TimedBuffer();
 
 		this._currentAvatar = {
 			id: null,

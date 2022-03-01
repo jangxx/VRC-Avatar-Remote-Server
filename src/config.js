@@ -53,7 +53,12 @@ class Config {
 			}
 			cur = cur[p];
 		}
-		return Object.assign({}, cur);
+		
+		if (typeof cur === "object") {
+			return Object.assign({}, cur);
+		} else {
+			return cur;
+		}
 	}
 
 	existsKey(...path) {
@@ -75,7 +80,12 @@ class Config {
 			}
 			cur = cur[p];
 		}
-		return Object.assign({}, cur);
+
+		if (typeof cur === "object") {
+			return Object.assign({}, cur);
+		} else {
+			return cur;
+		}
 	}
 
 	async setKey(...params) {

@@ -2,7 +2,7 @@ const { v4: uuiv4 } = require("uuid");
 const bcrypt = require("bcrypt");
 
 const { Config } = require("./config");
-const { AvatarParamControl } = require("./avatar_param_control");
+const { AvatarParamControl: BackendAvatarParamControl } = require("./backend_avatar_param_control");
 
 class Board {
 	/**
@@ -15,6 +15,7 @@ class Board {
 		this._config = config;
 
 		this._password = null;
+		this._name = "Unnamed Board " + Math.floor(Math.random() * 1000000);
 		this._avatars = {}; // each object contains the different parameter controls that are set up
 	}
 
@@ -22,16 +23,19 @@ class Board {
 		return this._id;
 	}
 
-	_serialize() {
+	serialize() {
 		function serializeAvatar(avi_def) {
 			const serialized = {
-				controls: avi_def.controls.map(control => control._serialize()),
+				controls: Object.fromEntries(
+					Object.entries(avi_def.controls).map(c => [c[0], c[1].serialize()] )
+				),
 			};
 			return serialized;
 		}
 
 		return {
 			password: this._password,
+			name: this._name,
 			avatars: Object.fromEntries(
 				Object.entries(this._avatars).map(elem => [elem[0], serializeAvatar(elem[1])] )
 			),
@@ -39,13 +43,15 @@ class Board {
 	}
 
 	async _store() {
-		await this._config.setKey("boards", this.id, this._serialize());
+		await this._config.setKey("boards", this.id, this.serialize());
 	}
 
 	_load() {
 		function deserializeAvatar(avi_def) {
 			const deserialized = {
-				controls: avi_def.controls.map(control => new AvatarParamControl(control)),
+				controls: Object.fromEntries(
+					Object.entries(avi_def.controls).map(c => [c[0], new AvatarParamControl(c[1])] )
+				),
 			};
 			return deserialized;
 		}
@@ -53,6 +59,7 @@ class Board {
 		const boardDef = this._config.getKey("boards", this.id);
 
 		this._password = boardDef.password;
+		this._name = boardDef.name;
 
 		this._avatars = Object.fromEntries(
 			Object.entries(boardDef.avatars).map(elem => [elem[0], deserializeAvatar(elem[1])] )
@@ -74,16 +81,96 @@ class Board {
 		return avid in this._avatars;
 	}
 
-	hasParameter(avid, paramName) {
-		return this.hasAvatar(avid) && paramName in this._avatars[avid].controls;
+	hasParameter(avid, id) {
+		return this.hasAvatar(avid) && id in this._avatars[avid].controls;
 	}
 
-	getParameter(avid, paramName) {
-		if (!this.hasParameter(avid, paramName)) {
+	getParameter(avid, id) {
+		if (!this.hasParameter(avid, id)) {
 			throw new Error("This parameter was not found on this board for this avatar");
 		}
 
-		return this._avatars[avid].controls[paramName].clone();
+		return this._avatars[avid].controls[id].clone();
+	}
+
+	async addAvatar(avid) {
+		if (this.hasAvatar(avid)) throw new Error("This avatar has already been added");
+
+		this._avatars[avid] = {
+			controls: {},
+		};
+
+		await this._store();
+	}
+
+	async removeAvatar(avid) {
+		if (!this.hasAvatar(avid)) throw new Error("This avatar is not part of this board");
+
+		delete this._avatars[avid];
+
+		await this._store();
+	}
+
+	constructParameter(avid, id, name, dataType, controlType, setValue, defaultValue) {
+		if (!this.hasAvatar(avid)) throw new Error("This avatar is not part of this board");
+
+		// this also performs validation
+		const parameterControl = new AvatarParamControl({
+			id,
+			name,
+			dataType,
+			controlType,
+			setValue,
+			defaultValue
+		});
+
+		return parameterControl;
+	}
+
+	async createParameter(avid, name, dataType, controlType, setValue, defaultValue) {
+		const parameterControl = this.constructParameter(
+			avid,
+			uuiv4(), // new random id 
+			name, 
+			dataType, 
+			controlType, 
+			setValue, 
+			defaultValue);
+
+		this._avatars[avid].controls[parameterControl.id] = parameterControl;
+
+		await this._store();
+
+		return parameterControl;
+	}
+
+	async removeParameter(avid, id) {
+		if (!this.hasParameter(avid, id)) {
+			throw new Error("This parameter was not found on this board for this avatar");
+		}
+
+		delete this._avatars[avid].controls[id];
+
+		await this._store();
+	}
+
+	async updateParameter(avid, parameterControl) {
+		if (!this.hasParameter(avid, parameterControl.id)) {
+			throw new Error("This parameter was not found on this board for this avatar");
+		}
+
+		this._avatars[avid].controls[parameterControl.id] = parameterControl;
+
+		await this._store();
+	}
+
+	getName() {
+		return this._name;
+	}
+
+	async setName(name) {
+		this._name = name;
+		await this._store();
 	}
 }
 
@@ -116,6 +203,30 @@ class BoardManager {
 		board._load();
 		return board;
 	}
+
+	getAllBoardIds() {
+		return Object.keys(this._config.getKey("boards"));
+	}
 }
 
-module.exports = { BoardManager, Board };
+function requireBoard(paramName, boardManager) {
+	return function(req, res, next) {
+		if (!(paramName in req.params)) {
+			console.error(`${paramName} missing from req.params?`);
+			const err = new Error();
+			err.statusCode = 500;
+			return next(err);
+		}
+
+		if (!boardManager.boardExists(req.params[paramName])) {
+			const err = new Error();
+			err.statusCode = 404;
+			return next(err);
+		}
+
+		req.board = boardManager.getBoard(req.params[paramName]);
+		return next();
+	}
+}
+
+module.exports = { BoardManager, Board, requireBoard };

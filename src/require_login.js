@@ -1,20 +1,22 @@
-function requireLogin(req, res, next) {
-	if (!("target" in req.params)) {
-		console.error("No target in req.params?");
-		const err = new Error();
-		err.statusCode = 400;
-		return next(err);
-	}
+function requireLogin(paramName) {
+	return function(req, res, next) {
+		if (!(paramName in req.params)) {
+			console.error(`${paramName} missing from req.params?`);
+			const err = new Error();
+			err.statusCode = 500;
+			return next(err);
+		}
 
-	const target = req.params.target;
+		const target = req.params[paramName];
 
-	if (requireLoginInternal(target, req.session)) {
-		return next();
-	} else {
-		const err = new Error();
-		err.statusCode = 403;
-		return next(err);
-	}
+		if (requireLoginInternal(target, req.session)) {
+			return next();
+		} else {
+			const err = new Error();
+			err.statusCode = 403;
+			return next(err);
+		}
+	};
 }
 
 function requireLoginSocketIO(req, next) {
@@ -36,19 +38,35 @@ function requireLoginSocketIO(req, next) {
 }
 
 function requireLoginInternal(target, session) {
-	if (!("logins" in req.session)) {
+	if (!("logins" in session)) {
 		return false;
 	}
 
-	if (!(target in req.session.logins)) {
+	if ("admin" in session.login) {
+		if (session.login.admin.loggedIn) {
+			return true;
+		}
+	}
+
+	if (!(target in session.logins)) {
 		return false;
 	}
 
-	if (!req.session.logins[target].loggedIn) {
+	if (!session.logins[target].loggedIn) {
 		return false;
 	}
 
 	return true;
 }
 
-module.exports = { requireLogin, requireLoginSocketIO, requireLoginInternal };
+function requireAdmin(req, res, next) {
+	if (requireLoginInternal("admin", req.session)) {
+		return next();
+	} else {
+		const err = new Error();
+		err.statusCode = 403;
+		return next(err);
+	}
+}
+
+module.exports = { requireLogin, requireLoginSocketIO, requireLoginInternal, requireAdmin };

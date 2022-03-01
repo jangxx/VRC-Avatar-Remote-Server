@@ -13,10 +13,11 @@ class OscManager extends EventEmitter {
 	}
 
 	init() {
-		this._client = new Client(
-			this._config.getRequiredKey("osc", "output", "address"),
-			this._config.getRequiredKey("osc", "output", "port"),
-		);
+		const sendPort = this._config.getRequiredKey("osc", "output", "port");
+		const sendAddress = this._config.getRequiredKey("osc", "output", "address");
+
+		this._client = new Client(sendAddress, sendPort);
+		console.log(`OSC messages will be sent to ${sendAddress}:${sendPort}`);
 
 		const port = this._config.getRequiredKey("osc", "listen", "port");
 		const address = this._config.getRequiredKey("osc", "listen", "address");

@@ -12,9 +12,9 @@ prompt.delimiter = "";
 const { Config } = require("./src/config");
 const { OscManager } = require("./src/osc_manager");
 const { VrcAvatarManager } = require("./src/vrc_avatar_manager");
-const { BoardManager } = require("./src/board_manager");
+const { BoardManager, requireBoard } = require("./src/board_manager");
 const { SocketManager } = require("./src/socket_manager");
-const { requireLogin, requireLoginSocketIO, requireLoginInternal } = require("./src/require_login");
+const { requireLogin, requireLoginSocketIO, requireLoginInternal, requireAdmin } = require("./src/require_login");
 const run = require("./src/express_async_middleware");
 
 if (process.argv.length < 3) {
@@ -159,6 +159,119 @@ async function main() {
 			return res.json({ loggedIn: requireLoginInternal(req.params.target, req.session) });
 		}
 	}));
+
+	/**
+	 * Board router
+	 */
+
+	const boardRouter = express.Router();
+
+	boardRouter.use(requireLogin("board"), requireBoard("board", boardManager));
+
+	boardRouter.get("/full", function(req, res) {
+		return res.json({
+			board: req.board.serialize()
+		});
+	});
+
+	boardRouter.get("/controls", function(req, res) {
+		return res.json({
+			controls: req.board.serialize().controls
+		});
+	});
+
+	app.use("/api/b/:board", boardRouter);
+
+	/**
+	 * Admin router
+	 */
+
+	const adminRouter = express.Router();
+
+	adminRouter.use(requireAdmin);
+
+	adminRouter.get("/boards", function(req, res) {
+		return res.json({
+			boards: Object.fromEntries(
+				boardManager.getAllBoardIds().map(boardId => [
+					boardId,
+					boardManager.getBoard(boardId)
+				])
+			)
+		});
+	});
+
+	adminRouter.post("/create-board", run(async function(req, res) {
+		const board = await boardManager.createBoard();
+
+		return res.json({
+			board: board.serialize(),
+		});
+	}));
+
+	adminRouter.post("/b/:board/create-parameter", requireBoard("board", boardManager), run(async function(req, res) {
+		if (!("parameter" in req.body)) {
+			return res.sendStatus(400);
+		}
+
+		if (!("name" in req.body.parameter && "avatar" in req.body.parameter)) {
+			return res.sendStatus(400);
+		}
+
+		let parameter;
+		try {
+			parameter = await req.board.createParameter(
+				req.body.parameter.avatar,
+				req.body.parameter.name,
+				req.body.parameter.dataType,
+				req.body.parameter.controlType,
+				req.body.parameter.setValue,
+				req.body.parameter.defaultValue,
+			);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.json({
+			parameter: parameter.serialize(),
+		});
+	}));
+
+	adminRouter.delete("/b/:board/:avatarId/:parameterId", requireBoard("board", boardManager), run(async function(req, res) {
+		try {
+			await req.board.removeParameter(req.params.avatarId, req.params.parameterId);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.end();
+	}));
+
+	adminRouter.put("/b/:board/:avatarId/:parameterId", requireBoard("board", boardManager), run(async function(req, res) {
+		let parameter;
+		try {
+			parameter = req.board.constructParameter(
+				req.params.avatarId,
+				req.params.parameterId,
+				req.body.parameter.name,
+				req.body.parameter.dataType,
+				req.body.parameter.controlType,
+				req.body.parameter.setValue,
+				req.body.parameter.defaultValue,
+			);
+
+			await req.board.updateParameter(req.params.avatarId, parameter);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.json({ parameter: parameter.serialize() });
+	}));
+
+	app.use("/api/admin", adminRouter);
 
 	const port = config.getRequiredKey("server", "port");
 	const address = config.getRequiredKey("server", "address");
