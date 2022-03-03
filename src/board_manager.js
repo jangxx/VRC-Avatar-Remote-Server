@@ -67,7 +67,7 @@ class Board {
 	}
 
 	hasPassword() {
-		return this._password === null;
+		return this._password !== null;
 	}
 
 	async checkPassword(password) {

@@ -42,7 +42,7 @@ function requireLoginInternal(target, session) {
 		return false;
 	}
 
-	if ("admin" in session.login) {
+	if ("admin" in session.logins) {
 		if (session.login.admin.loggedIn) {
 			return true;
 		}

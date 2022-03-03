@@ -19,5 +19,16 @@ export default defineConfig({
         admin: resolve(__dirname, "admin.html")
       }
     }
+  },
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080/",
+      },
+      "/socket.io": {
+        target: "http://localhost:8080/",
+        ws: true,
+      }
+    }
   }
 })

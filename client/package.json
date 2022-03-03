@@ -8,6 +8,9 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
   },
   "dependencies": {
+    "axios": "^0.26.0",
+    "sass": "^1.49.9",
+    "socket.io-client": "^4.4.1",
     "vue": "^3.2.31"
   },
   "devDependencies": {
