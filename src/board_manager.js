@@ -23,18 +23,19 @@ class Board {
 		return this._id;
 	}
 
-	serialize() {
+	serialize(external = false) {
 		function serializeAvatar(avi_def) {
 			const serialized = {
 				controls: Object.fromEntries(
 					Object.entries(avi_def.controls).map(c => [c[0], c[1].serialize()] )
 				),
+				name: avi_def.name,
 			};
 			return serialized;
 		}
 
 		return {
-			password: this._password,
+			password: (!external) ? this._password : (this._password !== null),
 			name: this._name,
 			avatars: Object.fromEntries(
 				Object.entries(this._avatars).map(elem => [elem[0], serializeAvatar(elem[1])] )
@@ -52,6 +53,7 @@ class Board {
 				controls: Object.fromEntries(
 					Object.entries(avi_def.controls).map(c => [c[0], new AvatarParamControl(c[1])] )
 				),
+				name: avi_def.name,
 			};
 			return deserialized;
 		}
@@ -68,6 +70,16 @@ class Board {
 
 	hasPassword() {
 		return this._password !== null;
+	}
+
+	async setPassword(password) {
+		if (password === null) { // disable
+			this._password = null;
+		} else {
+			this._password = await bcrypt.hash(password, 10);
+		}
+
+		await this._store();
 	}
 
 	async checkPassword(password) {
@@ -93,11 +105,12 @@ class Board {
 		return this._avatars[avid].controls[id].clone();
 	}
 
-	async addAvatar(avid) {
+	async addAvatar(avid, name) {
 		if (this.hasAvatar(avid)) throw new Error("This avatar has already been added");
 
 		this._avatars[avid] = {
 			controls: {},
+			name,
 		};
 
 		await this._store();

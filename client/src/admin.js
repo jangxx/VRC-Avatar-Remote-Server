@@ -1,4 +1,7 @@
 import { createApp } from 'vue'
 import AdminApp from './AdminApp.vue'
+import naive from "naive-ui";
 
-createApp(AdminApp).mount('#app')
+const app = createApp(AdminApp);
+app.use(naive);
+app.mount('#app')

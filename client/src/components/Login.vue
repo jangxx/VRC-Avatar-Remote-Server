@@ -3,6 +3,7 @@
 	<h1>Login</h1>
 	<form @submit.prevent="$emit('attempt-login', password)">
 		<input type="password" v-model="password" class="password-input" placeholder="Password" />
+		<div v-if="errorMessage != null" class="error">{{ errorMessage }}</div>
 		<button class="button green small login-button">Login</button>
 	</form>
   </div>
@@ -10,7 +11,7 @@
 
 <script>
 export default {
-	props: [ "target" ],
+	props: [ "target", "errorMessage" ],
 	data() {
 		return {
 			password: "",
@@ -34,6 +35,10 @@ export default {
 		margin-right: auto;
 		margin-top: 20px;
 		display: block;
+	}
+
+	.error {
+		margin-top: 5px;
 	}
 }
 </style>

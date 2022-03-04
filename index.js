@@ -170,13 +170,13 @@ async function main() {
 
 	boardRouter.get("/full", function(req, res) {
 		return res.json({
-			board: req.board.serialize()
+			board: req.board.serialize(true),
 		});
 	});
 
 	boardRouter.get("/controls", function(req, res) {
 		return res.json({
-			controls: req.board.serialize().controls
+			controls: req.board.serialize().controls,
 		});
 	});
 
@@ -195,7 +195,7 @@ async function main() {
 			boards: Object.fromEntries(
 				boardManager.getAllBoardIds().map(boardId => [
 					boardId,
-					boardManager.getBoard(boardId)
+					boardManager.getBoard(boardId).serialize(true)
 				])
 			)
 		});
@@ -209,19 +209,68 @@ async function main() {
 		});
 	}));
 
-	adminRouter.post("/b/:board/create-parameter", requireBoard("board", boardManager), run(async function(req, res) {
+	adminRouter.put("/b/:board/name", requireBoard("board", boardManager), run(async function(req, res) {
+		if (!("name" in req.body)) {
+			return res.sendStatus(400);
+		}
+
+		try {
+			await req.board.setName(req.body.name);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.end();
+	}));
+
+	adminRouter.put("/b/:board/password", requireBoard("board", boardManager), run(async function(req, res) {
+		if (!("password" in req.body)) {
+			return res.sendStatus(400);
+		}
+
+		try {
+			await req.board.setPassword(req.body.password);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.end();
+	}));
+
+	adminRouter.post("/b/:board/add-avatar", requireBoard("board", boardManager), run(async function(req, res) {
+		if (!("avatar" in req.body)) {
+			return res.sendStatus(400);
+		}
+
+		if (!("id" in req.body.avatar && "name" in req.body.avatar)) {
+			return res.sendStatus(400);
+		}
+
+		try {
+			await req.board.addAvatar(req.body.avatar.id, req.body.avatar.name);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.end();
+	}));
+
+	adminRouter.post("/b/:board/a/:avatarId/create-parameter", requireBoard("board", boardManager), run(async function(req, res) {
 		if (!("parameter" in req.body)) {
 			return res.sendStatus(400);
 		}
 
-		if (!("name" in req.body.parameter && "avatar" in req.body.parameter)) {
+		if (!("name" in req.body.parameter)) {
 			return res.sendStatus(400);
 		}
 
 		let parameter;
 		try {
 			parameter = await req.board.createParameter(
-				req.body.parameter.avatar,
+				req.param.avatarId,
 				req.body.parameter.name,
 				req.body.parameter.dataType,
 				req.body.parameter.controlType,
@@ -238,7 +287,7 @@ async function main() {
 		});
 	}));
 
-	adminRouter.delete("/b/:board/:avatarId/:parameterId", requireBoard("board", boardManager), run(async function(req, res) {
+	adminRouter.delete("/b/:board/a/:avatarId/p/:parameterId", requireBoard("board", boardManager), run(async function(req, res) {
 		try {
 			await req.board.removeParameter(req.params.avatarId, req.params.parameterId);
 		} catch(err) {
@@ -249,7 +298,7 @@ async function main() {
 		return res.end();
 	}));
 
-	adminRouter.put("/b/:board/:avatarId/:parameterId", requireBoard("board", boardManager), run(async function(req, res) {
+	adminRouter.put("/b/:board/:avatarId/p/:parameterId", requireBoard("board", boardManager), run(async function(req, res) {
 		let parameter;
 		try {
 			parameter = req.board.constructParameter(

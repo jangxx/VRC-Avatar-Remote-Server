@@ -5,7 +5,11 @@ $green_light: #00E04B;
 $red_dark: #6B0F12;
 $red_light: #EA2027;
 
-body, html {
+html {
+	margin: 0;
+}
+
+body {
 	margin-top: 20px;
 	margin-left: 0px;
 	margin-right: 0px;
@@ -106,4 +110,8 @@ input[type=text], input[type=password] {
 			height: 200px;
 		}
 	}
+}
+
+div.spacer {
+	margin-bottom: 20px;
 }
