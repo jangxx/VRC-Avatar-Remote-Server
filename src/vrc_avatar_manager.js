@@ -34,7 +34,7 @@ class VrcAvatarManager extends EventEmitter {
 
 			if (m == null) return;
 
-			switch (m.group(2)) {
+			switch (m[1]) {
 				case "change": // avatar was changed
 					const avatarId = msg.value;
 
@@ -47,15 +47,15 @@ class VrcAvatarManager extends EventEmitter {
 
 					this._buffer.getAll().forEach(msg => {
 						const m = msg.address.match(PARAM_RE);
-						this._processParameterUpdate(m.group(3), msg.value);
+						this._processParameterUpdate(m[2], msg.value);
 					});
 
 					break;
 				case "parameters":
-					if (EXCLUDE_RE.test(m.group(3))) return;
+					if (EXCLUDE_RE.test(m[2])) return;
 
 					this._buffer.add(msg.address, msg, 400);
-					this._processParameterUpdate(m.group(3), msg.value);
+					this._processParameterUpdate(m[2], msg.value);
 
 					break;
 			}

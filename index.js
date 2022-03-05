@@ -1,4 +1,5 @@
 const { createServer } = require("http");
+const url = require("url");
 
 const express = require("express");
 const expressSession = require("express-session");
@@ -81,11 +82,17 @@ async function main() {
 	app.use(express.json());
 
 	io.use((socket, next) => {
+		const u = url.parse(socket.request.url, true);
+		socket.request.query = u.query;
+		next();
+	});
+
+	io.use((socket, next) => {
 		sessionMiddleware(socket.request, {}, next);
 	});
 
 	io.use((socket, next) => {
-		requireLoginSocketIO(socket.request, {}, next);
+		requireLoginSocketIO(socket.request, next);
 	});
 
 	io.use((socket, next) => {
@@ -164,7 +171,7 @@ async function main() {
 	 * Board router
 	 */
 
-	const boardRouter = express.Router();
+	const boardRouter = express.Router({ mergeParams: true });
 
 	boardRouter.use(requireLogin("board"), requireBoard("board", boardManager));
 
@@ -186,7 +193,7 @@ async function main() {
 	 * Admin router
 	 */
 
-	const adminRouter = express.Router();
+	const adminRouter = express.Router({ mergeParams: true });
 
 	adminRouter.use(requireAdmin);
 

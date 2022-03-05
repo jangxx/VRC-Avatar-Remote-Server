@@ -4,6 +4,8 @@ const { VrcAvatarManager } = require("./vrc_avatar_manager");
 class BackendAvatarParamControl extends AvatarParamControl {
 	constructor(definition) {
 		super(definition);
+
+		this._currentlyActive = false;
 	}
 
 	/**
@@ -26,11 +28,16 @@ class BackendAvatarParamControl extends AvatarParamControl {
 		if (!["button", "toggle"].includes(this._controlType)) throw new Error("This method is not allowed for this control type");
 
 		if (this._controlType === "button") {
+			if (this._currentlyActive) return; // ignore
+
 			let currentVal = avatarManager.getParameter(this.name);
 			currentVal = (currentVal !== null) ? currentVal : this._defaultValue;
 
+			this._currentlyActive = true;
 			await avatarManager.setParameter(this.name, this._setValue);
+			
 			setTimeout(() => {
+				this._currentlyActive = false;
 				avatarManager.setParameter(this.name, currentVal).catch(err => control.error("Error in unsetting button value", err));
 			}, 1000);
 		} else if (this._controlType == "toggle") {

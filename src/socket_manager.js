@@ -14,7 +14,6 @@ class SocketManager {
 		this._boardManager = boardManager;
 		this._avatarManager = avatarManager;
 
-		this._subscriptions = {};
 		this._sockets = {};
 	}
 
@@ -27,23 +26,20 @@ class SocketManager {
 			params: []
 		};
 
-		// msg = { avatar, parameter }
-		socket.on("subscribe", msg => {
-			if (board.hasParameter(msg.avatar, msg.parameter)) {
-				const key = `${msg.avatar}::${msg.parameter}`;
-
-				if (!(key in this._subscriptions)) {
-					this._subscriptions[key] = [];
-				}
-
-				this._subscriptions[key].push(socket);
-			}
-		});
+		// put the socket in all the correct rooms
+		for (let p of board.getAllParametersOfAllAvatars()) {
+			const key = `parameter::${p.avatar}::${p.parameter}`;
+			socket.join(key); // join the parameters room
+		}
 
 		// msg = { avatar, controlId, value }
 		socket.on("set-parameter", (msg, callback) => {
 			if (!board.hasParameter(msg.avatar, msg.parameter)) {
 				return callback({ success: false, error: "Parameter doesn't exist" });
+			}
+
+			if (msg.avatar != this._avatarManager.getCurrentAvatarId()) {
+				return callback({ success: false, error: "This avatar is not currently active" });
 			}
 
 			const paramController = board.getParameter(msg.avatar, msg.controlId);
@@ -67,27 +63,35 @@ class SocketManager {
 				callback({ success: false, error: err.message });
 			});
 		});
+
+		// emit an initial avatar event if neccessary
+		const currentAvatar = this._avatarManager.getCurrentAvatarId();
+		if (board.hasAvatar(currentAvatar)) {
+			socket.emit("avatar", { id: currentAvatar });
+
+			for (let p of board.getParametersForAvatar(currentAvatar)) {
+				socket.emit("parameter", {
+					name: p.parameter,
+					avatar: p.avatar,
+					value: this._avatarManager.getParameter(p.parameter),
+				});
+			}
+		}
 	}
 
 	_removeSocket(socket) {
-		for (let param of this._sockets[socket.id].params) {
-			this._subscriptions[param] = this._subscriptions[param].filter(s => s.id != socket.id);
-		}
-
 		delete this._sockets[socket.id];
 	}
 
 	init() {
+		// evt = { name, value, avatar }
 		this._avatarManager.on("parameter", evt => {
-			const key = `${evt.avatar}::${evt.name}`;
-
-			if (!(key in this._subscriptions)) return;
-
-			for (let socket of this._subscriptions[key]) {
-				socket.emit("parameter", evt);
-			}
+			const key = `parameter::${evt.avatar}::${evt.name}`;
+			
+			this._io.to(key).emit("parameter", evt);
 		});
 
+		// evt = { id }
 		this._avatarManager.on("avatar", evt => {
 			for (let socketId in this._sockets) {
 				if (this._sockets[socketId].board.hasAvatar(evt.id)) {

@@ -2,7 +2,7 @@ const { v4: uuiv4 } = require("uuid");
 const bcrypt = require("bcrypt");
 
 const { Config } = require("./config");
-const { AvatarParamControl: BackendAvatarParamControl } = require("./backend_avatar_param_control");
+const {BackendAvatarParamControl: AvatarParamControl } = require("./backend_avatar_param_control");
 
 class Board {
 	/**
@@ -103,6 +103,32 @@ class Board {
 		}
 
 		return this._avatars[avid].controls[id].clone();
+	}
+
+	getParametersForAvatar(avid) {
+		const avParams = new Set();
+		for (let controlId in this._avatars[avid].controls) {
+			avParams.add(this._avatars[avid].controls[controlId].name);
+		}
+
+		return [...avParams].map(parameter => {
+			return { avatar: avid, parameter };
+		});
+	}
+
+	getAllParametersOfAllAvatars() {
+		let result = [];
+		for (let avid in this._avatars) {
+			const avParams = new Set();
+			for (let controlId in this._avatars[avid].controls) {
+				avParams.add(this._avatars[avid].controls[controlId].name);
+			}
+
+			result = result.concat([...avParams].map(parameter => {
+				return { avatar: avid, parameter };
+			}));
+		}
+		return result;
 	}
 
 	async addAvatar(avid, name) {
