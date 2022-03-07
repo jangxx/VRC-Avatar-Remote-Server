@@ -102,7 +102,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import axios from "redaxios";
 import { darkTheme } from "naive-ui";
 
 import LoginMixin from "./lib/LoginMixin";

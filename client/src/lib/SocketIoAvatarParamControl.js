@@ -1,4 +1,5 @@
 import { AvatarParamControl } from "../../../lib/avatar_param_control";
+// import { AvatarParamControl } from "./avatar_param_control.js";
 
 class SocketIoAvatarParamControl extends AvatarParamControl {
 	constructor(definition, avatarId) {

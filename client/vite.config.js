@@ -9,8 +9,12 @@ export default defineConfig({
   plugins: [ vue() ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // "socket.io-client": "socket.io-client/dist/socket.io.js",
     }
+  },
+  optimizeDeps: {
+    include: [ "../lib/avatar_param_control.js" ],
   },
   build: {
     rollupOptions: {
@@ -18,7 +22,11 @@ export default defineConfig({
         main: resolve(__dirname, "index.html"),
         admin: resolve(__dirname, "admin.html")
       }
-    }
+    },
+    commonjsOptions: {
+      include: [ "../lib/avatar_param_control.js" ],
+      defaultIsModuleExports: true,
+    },
   },
   server: {
     proxy: {

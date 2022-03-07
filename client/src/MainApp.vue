@@ -23,10 +23,12 @@
 </template>
 
 <script>
-import axios from "axios";
-import { io } from "socket.io-client";
+import axios from "redaxios";
+// import { io } from "socket.io-client";
+import socket from "socket.io-client/dist/socket.io.js";
 
 import LoginMixin from "./lib/LoginMixin";
+import { SocketIoAvatarParamControl } from "./lib/SocketIoAvatarParamControl";
 
 import Login from "./components/Login.vue";
 
@@ -37,7 +39,8 @@ export default {
     return {
       board: null,
       avatarId: null,
-      avatarParameters: {},
+      avatarParameterValues: {},
+      controls: {},
     }
   },
   computed: {
@@ -69,13 +72,21 @@ export default {
       this.$options.socket.on("avatar", msg => {
         console.log("avatar", msg);
         this.avatarId = (msg !== null) ? msg.id : null;
-        this.avatarParameters = {}; // reset value cache
+        this.avatarParameterValues = {}; // reset value cache
+        this.controls = {};
+
+        if (this.avatarId !== null) {
+          // create avatar parameter controls
+          for (let controlId in this.board.avatars[this.avatarId].controls) {
+            this.controls[controlId] = new SocketIoAvatarParamControl(this.board.avatars[this.avatarId].controls[controlId], this.avatarId);
+          }
+        }
       });
 
       // msg = { name, value, avatar }
       this.$options.socket.on("parameter", msg => {
         console.log("parameter", msg);
-        this.avatarParameters[msg.name] = msg.value;
+        this.avatarParameterValues[msg.name] = msg.value;
       });
     },
   },
