@@ -23,9 +23,8 @@
 </template>
 
 <script>
-import axios from "redaxios";
-// import { io } from "socket.io-client";
-import socket from "socket.io-client/dist/socket.io.js";
+import axios from "axios";
+import { io } from "socket.io-client";
 
 import LoginMixin from "./lib/LoginMixin";
 import { SocketIoAvatarParamControl } from "./lib/SocketIoAvatarParamControl";

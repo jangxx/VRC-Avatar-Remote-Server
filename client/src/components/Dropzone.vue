@@ -6,8 +6,8 @@
 
 <script>
 
-
 export default {
+	name: "DropzoneComponent",
 	data() {
 		return {
 			droppedFilename: "Drop a file here",
