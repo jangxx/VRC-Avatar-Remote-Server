@@ -187,6 +187,23 @@ async function main() {
 		});
 	});
 
+	boardRouter.get("/current-avatar", function(req, res) {
+		const currentAvatar = avatarManager.getCurrentAvatarId();
+
+		if (currentAvatar === null) {
+			return res.json({ id: null });
+		}
+
+		if (req.board.hasAvatar(currentAvatar)) {
+			return res.json({
+				id: currentAvatar,
+				parameters: avatarManager.getCurrentParams(),
+			});
+		} else {
+			return res.json({ id: null });
+		}
+	});
+
 	app.use("/api/b/:board", boardRouter);
 
 	/**
@@ -339,6 +356,13 @@ async function main() {
 	oscManager.init();
 	avatarManager.init();
 	socketManager.init();
+
+	setTimeout(() => {
+		oscManager.emit("message", {
+			address: "/avatar/change", 
+			value: "avtr_418bf257-d957-46c9-be51-bf97ac25b862",
+		});
+	}, 1000);
 }
 
 main().catch(err => {

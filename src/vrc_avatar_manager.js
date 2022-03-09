@@ -82,6 +82,10 @@ class VrcAvatarManager extends EventEmitter {
 		await this._osc.sendMessage(`/avatar/parameters/${paramName}`, value);
 		// we're not updating the currentAvatar here. it will get updated soon after the game sends the update back to us
 	}
+
+	forceSetParameter(paramName, value) {
+		this._processParameterUpdate(paramName, value);
+	}
 }
 
 module.exports = { VrcAvatarManager };

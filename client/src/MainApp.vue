@@ -15,6 +15,29 @@
           <div class="text">Avatar: <b>{{ currentAvatar.name }}</b></div>
 
           <div class="controls">
+            <div v-for="(control, cid) in controls" :key="cid" class="control-wrapper">
+              <div 
+                v-if="control.types.control === 'button'" 
+                class="control control-button"
+                :class="{ 'clicked': control.clicked }"
+                @click="performAction(control)"
+              >
+                <div class="title-wrapper"><div class="title">{{ control.label }}</div></div>
+              </div>
+              <div
+                v-else-if="control.types.control === 'toggle'"
+                class="control control-toggle"
+                :class="{ 'toggled': control.isToggled(avatarParameterValues) }"
+                @click="performAction(control)"
+              >
+                <div class="title-wrapper"><div class="title">{{ control.label }}</div></div>
+                <div class="slider-wrapper"><div class="slider"></div></div>
+              </div>
+              <div v-else-if="control.types.control === 'range'" class="control control-range">
+                <div class="title-wrapper"><div class="title">{{ control.label }}</div></div>
+                <RadialMenu style="width: 100%; height: 100%"></RadialMenu>
+              </div>
+            </div>
           </div>
         </template>
       </div>
@@ -30,10 +53,11 @@ import LoginMixin from "./lib/LoginMixin";
 import { SocketIoAvatarParamControl } from "./lib/SocketIoAvatarParamControl";
 
 import Login from "./components/Login.vue";
+import RadialMenu from "./components/RadialMenu.vue";
 
 export default {
   mixins: [ LoginMixin ],
-  components: { Login },
+  components: { Login, RadialMenu },
   data() {
     return {
       board: null,
@@ -88,6 +112,11 @@ export default {
         this.avatarParameterValues[msg.name] = msg.value;
       });
     },
+    performAction(control) {
+      control.performAction(this.$options.socket).catch(err => {
+        console.error(err);
+      });
+    }
   },
   async created() {
     this.$options.socket = null;
@@ -118,6 +147,91 @@ h1, h2, div.text {
 }
 
 .controls {
-  
+  margin-top: 20px;
+  width: 800px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-gap: 20px;
+
+  .control-wrapper {
+    box-sizing: border-box;
+    aspect-ratio: 1;
+    position: relative;
+
+
+    .control {
+      width: 100%;
+      height: 100%;
+      border-style: solid;
+      border-color: #343434;
+      border-width: 1px;
+      border-radius: 20%;
+
+      .title-wrapper {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+
+        .title {
+          font-size: 25px;
+          max-width: 75%;
+          word-wrap: break-word;
+          text-align: center;
+          user-select: none;
+        }
+      }
+
+      &.control-button, &.control-toggle {
+        cursor: pointer;
+
+        &:hover {
+          background-color: #232323;
+        }
+      }
+
+      &.control-button {
+        &.clicked {
+          background-color: $main_light;
+        }
+      }
+
+      &.control-toggle {
+        .slider-wrapper {
+          box-sizing: border-box;
+          z-index: 10;
+          height: 100%;
+          width: 40%;
+          padding: 5%;
+          transition: transform 0.2s;
+
+          .slider {
+            background-color: $red_dark;
+            width: 100%;
+            height: 100%;
+            border-radius: 100%/33.3333%;
+            transition: background-color 0.2s;
+          }
+        }
+
+        &.toggled {
+          .slider-wrapper {
+            transform: translateX(150%);
+
+            .slider {
+              background-color: $green_dark;
+            }
+          }
+        }
+      }
+
+      &.control-range {
+
+      }
+    }
+  }
 }
 </style>

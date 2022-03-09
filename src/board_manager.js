@@ -51,7 +51,10 @@ class Board {
 		function deserializeAvatar(avi_def) {
 			const deserialized = {
 				controls: Object.fromEntries(
-					Object.entries(avi_def.controls).map(c => [c[0], new AvatarParamControl(c[1])] )
+					Object.entries(avi_def.controls).map(c => [
+						c[0], 
+						new AvatarParamControl({ ...c[1], id: c[0] })
+					])
 				),
 				name: avi_def.name,
 			};

@@ -34,7 +34,11 @@ class SocketManager {
 
 		// msg = { avatar, controlId, value }
 		socket.on("set-parameter", (msg, callback) => {
-			if (!board.hasParameter(msg.avatar, msg.parameter)) {
+			if (msg == undefined || typeof msg !== "object" || !("avatar" in msg && "controlId" in msg && "value" in msg)) {
+				return callback({ success: false, error: "Invalid data" });
+			}
+
+			if (!board.hasParameter(msg.avatar, msg.controlId)) {
 				return callback({ success: false, error: "Parameter doesn't exist" });
 			}
 
@@ -52,7 +56,11 @@ class SocketManager {
 
 		// msg = { avatar, controlId }
 		socket.on("perform-action", (msg, callback) => {
-			if (!board.hasParameter(msg.avatar, msg.parameter)) {
+			if (msg == undefined || typeof msg !== "object" || !("avatar" in msg && "controlId" in msg)) {
+				return callback({ success: false, error: "Invalid data" });
+			}
+
+			if (!board.hasParameter(msg.avatar, msg.controlId)) {
 				return callback({ success: false, error: "Parameter doesn't exist" });
 			}
 

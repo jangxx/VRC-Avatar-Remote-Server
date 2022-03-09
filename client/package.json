@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "axios": "^0.26.0",
+    "color-interpolate": "^1.0.5",
     "core-js": "^3.8.3",
     "naive-ui": "^2.26.1",
     "socket.io-client": "^4.4.1",
