@@ -12,7 +12,7 @@
 <script>
 export default {
 	name: "LoginComponent",
-	props: [ "target", "errorMessage" ],
+	props: [ "errorMessage" ],
 	data() {
 		return {
 			password: "",

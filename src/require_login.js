@@ -12,9 +12,11 @@ function requireLogin(paramName) {
 		if (requireLoginInternal(target, req.session)) {
 			return next();
 		} else {
-			const err = new Error();
-			err.statusCode = 403;
-			return next(err);
+			// const err = new Error();
+			// err.statusCode = 403;
+			// return next(err);
+			res.sendStatus(403);
+			return;
 		}
 	};
 }

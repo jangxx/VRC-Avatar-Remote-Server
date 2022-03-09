@@ -1,6 +1,12 @@
 <template>
 	<div class="radial-menu" ref="container">
-		<canvas ref="canvas" :width="canvasWidth" :height="canvasHeight"></canvas>
+		<canvas
+			ref="canvas"
+			:width="canvasWidth"
+			:height="canvasHeight"
+			@mousedown="handleMousedown"
+			@mousemove="handleMousemove"
+		></canvas>
 	</div>	
 </template>
 
@@ -10,16 +16,23 @@ import interpolate from "color-interpolate";
 
 export default {
 	name: "RadialMenu",
-	props: [ "value" ],
+	props: [ "modelValue" ],
 	data() {
 		return {
 			canvasWidth: 100,
             canvasHeight: 100,
+			mouseDown: false,
+			inputValue: (this.modelValue !== undefined) ? this.modelValue : 0,
 		}
 	},
 	computed: {
-		displayValue() {
-			return this.value !== undefined ? this.value : 0;
+	},
+	watch: {
+		modelValue(val) {
+			if (!this.mouseDown && val !== undefined) {
+				this.inputValue = val;
+				this.render();
+			}
 		}
 	},
 	methods: {
@@ -47,7 +60,7 @@ export default {
 			const colormap = interpolate([ "#6B0F12", "#009432" ]);
 
 			ctx.lineWidth = line_width;
-			ctx.strokeStyle = colormap(this.displayValue);
+			ctx.strokeStyle = colormap(this.inputValue);
 
 			const radius = Math.min(width,height)/2 - Math.min(width,height)/10 - line_width/2;
 
@@ -56,8 +69,8 @@ export default {
 			ctx.arc(width/2, height/2, radius, 0, Math.PI * 2);
 			ctx.stroke();
 
-			const posX = width/2 + Math.sin(this.displayValue * Math.PI * 2) * radius;
-			const posY = height/2 + Math.cos(this.displayValue * Math.PI * 2) * radius;
+			const posX = width/2 + Math.sin(-this.inputValue * Math.PI * 2) * radius;
+			const posY = height/2 + Math.cos(this.inputValue * Math.PI * 2) * radius;
 
 			// draw value display
 			ctx.fillStyle = "#343434";
@@ -68,7 +81,38 @@ export default {
 			ctx.fill();
 			ctx.stroke();
 
-			// TODO: add text
+			ctx.font = `${radius/3}px Arial`;
+			ctx.fillStyle = "white";
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+			ctx.fillText(`${Math.round(this.inputValue * 100)}`, posX, posY + 3);
+		},
+		handleMousedown(evt) {
+			window.addEventListener("mouseup", this.handleMouseup);
+			this.mouseDown = true;
+			
+			this.handleMouse(evt.offsetX, evt.offsetY);
+		},
+		handleMousemove(evt) {
+			if (!this.mouseDown) return;
+
+			this.handleMouse(evt.offsetX, evt.offsetY);
+		},
+		handleMouseup(evt) {
+			this.mouseDown = false;
+		},
+		handleMouse(posX, posY) {
+			const canvas = this.$refs.canvas;
+			const width = canvas.width;
+			const height = canvas.height;
+
+			let angle = -Math.atan2(posX - width/2, posY - height/2);
+			angle = (angle < 0) ? angle + Math.PI * 2 : angle;
+
+			this.inputValue = angle / (Math.PI * 2);
+
+			this.$emit("update:modelValue", this.inputValue);
+			this.render();
 		},
 	},
 	mounted() {

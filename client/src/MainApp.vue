@@ -3,7 +3,7 @@
     <div v-if="notFound">
       <h1>This page could not be found</h1>
     </div>
-    <Login v-if="!loggedIn && !notFound" @attempt-login="pw => performLogin(boardID, pw)" :errorMessage="loginError"></Login>
+    <Login v-if="!loggedIn && !notFound" @attempt-login="pw => performLogin(boardId, pw)" :errorMessage="loginError"></Login>
     <template v-if="loggedIn && !notFound">
       <div v-if="board === null"><h1>Loading...</h1></div>
       <div v-else>
@@ -35,7 +35,11 @@
               </div>
               <div v-else-if="control.types.control === 'range'" class="control control-range">
                 <div class="title-wrapper"><div class="title">{{ control.label }}</div></div>
-                <RadialMenu style="width: 100%; height: 100%"></RadialMenu>
+                <RadialMenu
+                  style="width: 100%; height: 100%" 
+                  v-model="avatarParameterValues[control.name]" 
+                  @update:modelValue="v => setParamValue(control, v)"
+                ></RadialMenu>
               </div>
             </div>
           </div>
@@ -77,6 +81,14 @@ export default {
       return this.board.avatars[this.avatarId];
     }
   },
+  watch: {
+    async loggedIn() {
+      if (this.loggedIn) {
+        await this.updateBoard();
+        this.setupSocket();
+      }
+    },
+  },
   methods: {
     async updateBoard() {
       const resp = await axios.get(`/api/b/${this.boardId}/full`);
@@ -93,7 +105,7 @@ export default {
 
       // msg = { id }
       this.$options.socket.on("avatar", msg => {
-        console.log("avatar", msg);
+        // console.log("avatar", msg);
         this.avatarId = (msg !== null) ? msg.id : null;
         this.avatarParameterValues = {}; // reset value cache
         this.controls = {};
@@ -108,12 +120,17 @@ export default {
 
       // msg = { name, value, avatar }
       this.$options.socket.on("parameter", msg => {
-        console.log("parameter", msg);
+        // console.log("parameter", msg);
         this.avatarParameterValues[msg.name] = msg.value;
       });
     },
     performAction(control) {
       control.performAction(this.$options.socket).catch(err => {
+        console.error(err);
+      });
+    },
+    setParamValue(control, val) {
+      control.setValue(this.$options.socket, val).catch(err => {
         console.error(err);
       });
     }
@@ -175,6 +192,7 @@ h1, h2, div.text {
         align-items: center;
         justify-content: center;
         z-index: 100;
+        pointer-events: none;
 
         .title {
           font-size: 25px;
