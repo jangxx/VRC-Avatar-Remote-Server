@@ -72,7 +72,7 @@ export default {
   },
   computed: {
     boardId() {
-      const m = window.location.pathname.match(/^\/b\/(\w+)/);
+      const m = window.location.pathname.match(/^\/b\/((?:\w|-)+)/);
       if (m == null) return null;
       return m[1];
     },
