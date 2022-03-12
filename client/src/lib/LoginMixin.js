@@ -32,6 +32,10 @@ export default {
 			} catch(e) {
 				console.log(e.response);
 			}
+		},
+		getPasswordParam() {
+			const urlParams = new URLSearchParams(window.location.search);
+			return urlParams.get("password");
 		}
 	}
 };

@@ -1,5 +1,6 @@
 const { createServer } = require("http");
 const url = require("url");
+const path = require("path");
 
 const express = require("express");
 const expressSession = require("express-session");
@@ -33,6 +34,10 @@ const httpServer = createServer(app);
 const io = new Server(httpServer);
 
 const socketManager = new SocketManager(io, boardManager, avatarManager);
+
+function pathSep(p) {
+	return (path.sep !== "/") ? p.replace("/", path.sep) : p;
+}
 
 async function main() {
 	await config.init();
@@ -80,6 +85,19 @@ async function main() {
 	app.set('trust proxy', 1);
 	app.use(sessionMiddleware);
 	app.use(express.json());
+	app.use("/build", express.static(path.join(__dirname, "client/dist")));
+
+	app.get("/", function(req, res) {
+		res.sendFile(path.join(__dirname, "client/dist/index.html"));
+	});
+
+	app.get("/b/:boardId", function(req, res) {
+		res.sendFile(path.join(__dirname, "client/dist/index.html"));
+	});
+
+	app.get("/admin", function(req, res) {
+		res.sendFile(path.join(__dirname, "client/dist/admin.html"));
+	});
 
 	io.use((socket, next) => {
 		const u = url.parse(socket.request.url, true);
@@ -357,12 +375,13 @@ async function main() {
 	avatarManager.init();
 	socketManager.init();
 
-	setTimeout(() => {
-		oscManager.emit("message", {
-			address: "/avatar/change", 
-			value: "avtr_418bf257-d957-46c9-be51-bf97ac25b862",
-		});
-	}, 1000);
+	// for testing and development only
+	// setTimeout(() => {
+	// 	oscManager.emit("message", {
+	// 		address: "/avatar/change", 
+	// 		value: "avtr_418bf257-d957-46c9-be51-bf97ac25b862",
+	// 	});
+	// }, 1000);
 }
 
 main().catch(err => {

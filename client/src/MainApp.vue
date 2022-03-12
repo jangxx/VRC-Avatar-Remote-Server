@@ -91,11 +91,13 @@ export default {
   },
   methods: {
     async updateBoard() {
+      if (!this.loggedIn) return;
+
       const resp = await axios.get(`/api/b/${this.boardId}/full`);
       this.board = resp.data.board;
     },
     setupSocket() {
-      if (this.boardId == null) return;
+      if (this.boardId == null || !this.loggedIn) return;
       this.$options.socket = io({
         query: {
           target: this.boardId,
@@ -140,6 +142,12 @@ export default {
 
     if (this.boardId !== null) {
       await this.checkLogin(this.boardId);
+
+      const presetPw = this.getPasswordParam();
+      if (!this.loggedIn && presetPw !== null) {
+        await this.performLogin(this.boardId, presetPw);
+      }
+
       await this.updateBoard();
       this.setupSocket();
     } else {

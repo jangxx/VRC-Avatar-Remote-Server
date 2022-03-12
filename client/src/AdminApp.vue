@@ -56,7 +56,8 @@
           </n-collapse>
 
           <n-card>
-            <n-text>Drop an avatar OSC JSON file to add it to the board or to update its parameters:</n-text>
+            <n-text>Drop an avatar OSC JSON file to add it to the board or to update its parameters. You can find these JSON files in a subdirectory of this path (click to select and copy-paste into Windows Explorer):</n-text>
+            <n-input readonly size="small" value="%HOMEPATH%\AppData\LocalLow\VRChat\VRChat\OSC" ref="oscPathInput" @click="$refs.oscPathInput.select()"></n-input>
             <Dropzone @file="openAvatarFile"></Dropzone>
 
             <div v-if="droppedAvatar !== null">
