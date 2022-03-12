@@ -23,6 +23,10 @@
         <div class="spacer"></div>
 
         <template v-if="currentBoard !== null">
+          <n-text>You can open this board under this url: <n-a :href="boardUrl" target="_blank">{{ boardUrl }}</n-a></n-text>
+
+          <n-divider />
+
           <n-collapse style="margin-bottom: 20px">
             <n-collapse-item title="Rename board">
               <n-card>
@@ -173,6 +177,11 @@ export default {
         }),
       };
     },
+    boardUrl() {
+      if (this.boards == null || this.currentBoard == null) return "";
+
+      return `${window.location.origin}/b/${this.currentBoard}`;
+    }
   },
   methods: {
     async updateBoards() {

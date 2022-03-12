@@ -38,7 +38,6 @@ const socketManager = new SocketManager(io, boardManager, avatarManager);
 async function main() {
 	await config.init();
 
-	console.log(config.getRequiredKey("admin", "password"));
 	if (config.getRequiredKey("admin", "password") === null) {
 		prompt.start({ noHandleSIGINT: true });
 		console.log("You need to set an admin password before using this tool. Please enter it now.");
