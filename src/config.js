@@ -81,8 +81,10 @@ class Config {
 			cur = cur[p];
 		}
 
-		if (typeof cur === "object") {
+		if (typeof cur === "object" && cur !== null && !Array.isArray(yourVariable)) {
 			return Object.assign({}, cur);
+		} else if (typeof cur === "object" && cur !== null && Array.isArray(yourVariable)) {
+			return [...cur]
 		} else {
 			return cur;
 		}

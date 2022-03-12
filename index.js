@@ -35,13 +35,10 @@ const io = new Server(httpServer);
 
 const socketManager = new SocketManager(io, boardManager, avatarManager);
 
-function pathSep(p) {
-	return (path.sep !== "/") ? p.replace("/", path.sep) : p;
-}
-
 async function main() {
 	await config.init();
 
+	console.log(config.getRequiredKey("admin", "password"));
 	if (config.getRequiredKey("admin", "password") === null) {
 		prompt.start({ noHandleSIGINT: true });
 		console.log("You need to set an admin password before using this tool. Please enter it now.");
