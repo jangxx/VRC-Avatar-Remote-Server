@@ -9,6 +9,8 @@ const DEFAULT_CONFIG = {
 		sessionSecret: randomstring.generate(32), // this will be stored on first server start and subsequently used
 	},
 	osc: {
+		log_all_outputs: false,
+		log_all_inputs: false,
 		output: {
 			address: "localhost",
 			port: 9000,
@@ -46,6 +48,8 @@ class Config {
 	}
 
 	getKey(...path) {
+		if (this._config === null) throw new Error("Config is not initialized yet");
+
 		let cur = this._config;
 		for (let p of path) {
 			if (!(p in cur)) {
@@ -62,6 +66,8 @@ class Config {
 	}
 
 	existsKey(...path) {
+		if (this._config === null) throw new Error("Config is not initialized yet");
+
 		let cur = this._config;
 		for (let p of path) {
 			if (!(p in cur)) {
@@ -73,6 +79,8 @@ class Config {
 	}
 
 	getRequiredKey(...path) {
+		if (this._config === null) throw new Error("Config is not initialized yet");
+
 		let cur = this._config;
 		for (let p of path) {
 			if (!(p in cur)) {
@@ -91,6 +99,8 @@ class Config {
 	}
 
 	async setKey(...params) {
+		if (this._config === null) throw new Error("Config is not initialized yet");
+
 		const path = params.slice(0, -1);
 		const value = params[params.length - 1];
 

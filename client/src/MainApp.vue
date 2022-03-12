@@ -173,16 +173,25 @@ h1, h2, div.text {
 
 .controls {
   margin-top: 20px;
-  width: 800px;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-gap: 20px;
+  // width: 800px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  // grid-template-columns: 1fr 1fr 1fr;
+  // grid-gap: 20px;
 
   .control-wrapper {
     box-sizing: border-box;
-    aspect-ratio: 1;
+    // aspect-ratio: 1;
     position: relative;
+    width: 250px;
+    height: 250px;
+    margin: 10px;
 
+    @media (max-width: 810px) {
+      width: 150px;
+      height: 150px;
+    }
 
     .control {
       width: 100%;
