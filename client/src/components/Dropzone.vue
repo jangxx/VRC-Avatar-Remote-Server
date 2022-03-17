@@ -31,7 +31,7 @@ export default {
 	background-color: #656565;
 	width: 100%;
 	height: 80px;
-	margin: 20px 0px;
+	/* margin: 20px 0px; */
 	padding: 20px;
 	text-align: center;
 }

@@ -153,7 +153,7 @@ class Board {
 		await this._store();
 	}
 
-	constructParameter(avid, id, name, dataType, controlType, setValue, defaultValue) {
+	constructParameter(avid, id, name, dataType, controlType, setValue, defaultValue, label=null) {
 		if (!this.hasAvatar(avid)) throw new Error("This avatar is not part of this board");
 
 		// this also performs validation
@@ -163,13 +163,14 @@ class Board {
 			dataType,
 			controlType,
 			setValue,
-			defaultValue
+			defaultValue,
+			label,
 		});
 
 		return parameterControl;
 	}
 
-	async createParameter(avid, name, dataType, controlType, setValue, defaultValue) {
+	async createParameter(avid, name, dataType, controlType, setValue, defaultValue, label=null) {
 		const parameterControl = this.constructParameter(
 			avid,
 			uuiv4(), // new random id 
@@ -177,7 +178,8 @@ class Board {
 			dataType, 
 			controlType, 
 			setValue, 
-			defaultValue);
+			defaultValue,
+			label);
 
 		this._avatars[avid].controls[parameterControl.id] = parameterControl;
 

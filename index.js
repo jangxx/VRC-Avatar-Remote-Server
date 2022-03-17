@@ -336,7 +336,7 @@ async function main() {
 		return res.end();
 	}));
 
-	adminRouter.put("/b/:board/:avatarId/p/:parameterId", requireBoard("board", boardManager), run(async function(req, res) {
+	adminRouter.put("/b/:board/a/:avatarId/p/:parameterId", requireBoard("board", boardManager), run(async function(req, res) {
 		let parameter;
 		try {
 			parameter = req.board.constructParameter(
@@ -347,6 +347,7 @@ async function main() {
 				req.body.parameter.controlType,
 				req.body.parameter.setValue,
 				req.body.parameter.defaultValue,
+				req.body.parameter.label,
 			);
 
 			await req.board.updateParameter(req.params.avatarId, parameter);
