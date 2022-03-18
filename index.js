@@ -308,12 +308,13 @@ async function main() {
 		let parameter;
 		try {
 			parameter = await req.board.createParameter(
-				req.param.avatarId,
+				req.params.avatarId,
 				req.body.parameter.name,
 				req.body.parameter.dataType,
 				req.body.parameter.controlType,
 				req.body.parameter.setValue,
 				req.body.parameter.defaultValue,
+				req.body.parameter.label
 			);
 		} catch(err) {
 			err.statusCode = 400;

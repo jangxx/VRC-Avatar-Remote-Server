@@ -5,9 +5,9 @@
 
 		<n-collapse>
 			<n-collapse-item title="Add board">
-			<n-card>
-				<n-button type="primary" @click="addBoard">Create board</n-button>
-			</n-card>
+				<n-card>
+					<n-button type="primary" @click="addBoard">Create board</n-button>
+				</n-card>
 			</n-collapse-item>
 		</n-collapse>
 
@@ -62,10 +62,10 @@
 
 					<div v-if="droppedAvatar !== null">
 						<n-text type="error" v-if="droppedAvatar.error !== null">
-						<b>Error while adding avatar</b>: {{ droppedAvatar.error }}
+							<b>Error while adding avatar</b>: {{ droppedAvatar.error }}
 						</n-text>
 						<n-text type="info" v-else-if="processedAvatarData !== null">
-						Found avatar <b>{{ processedAvatarData.name }}</b> with <b>{{ processedAvatarData.parameters.length }}</b> input parameters.
+							Found avatar <b>{{ processedAvatarData.name }}</b> with <b>{{ processedAvatarData.parameters.length }}</b> input parameters.
 						</n-text>
 					</div>
 
@@ -82,15 +82,63 @@
 
 				<template v-if="processedAvatarData !== null && currentAvatar == processedAvatarData.id">
 					<n-card>
-						<n-form>
-						<!-- TODO -->
+						<n-h3>Add parameter control</n-h3>
 
-						<!-- <n-form-item label="Board name">
-							<n-input placeholder="Board name" />
-						</n-form-item> -->
+						<n-form>
+							<n-form-item label="Label">
+								<n-input v-model:value="currentParameterControl.label" placeholder="Name of the control" />
+							</n-form-item>
+							<n-form-item label="Parameter">
+								<n-select v-model:value="currentParameterControl.selectedParameter" placeholder="Select parameter" :options="newControlSelectOptions" />
+							</n-form-item>
+							<n-form-item label="Control type">
+								<n-select v-model:value="currentParameterControl.controlType" placeholder="Select control type" :options="newControlTypeOptions" :disabled="newControlSelectedParameter === null" />
+							</n-form-item>
+							<n-collapse-transition :show="currentParameterControl.controlType == 'toggle' || currentParameterControl.controlType == 'button'">
+								<n-grid v-if="currentParameterControl.controlType == 'button'" :cols="2" :y-gap="10">
+									<n-gi :span="2">
+										<n-text>
+											The button will always toggle between the <i>current</i> value and the <i>set value</i>, but if the server has not received a value for this parameter yet, it needs a default value to reset it to.
+											You should set this to the default value configured for the parameter in Unity
+										</n-text>
+									</n-gi>
+									<n-gi>
+										<n-form-item label="Default value">
+											<n-input-number v-if="newControlSelectedParameter.type == 'Float'" v-model:value="currentParameterControl.defaultValue" size="small" step="0.1" />
+											<n-input-number v-if="newControlSelectedParameter.type == 'Int'" v-model:value="currentParameterControl.defaultValue" size="small" />
+											<n-checkbox v-if="newControlSelectedParameter.type == 'Bool'" v-model:checked="currentParameterControl.defaultValue" />
+										</n-form-item>
+									</n-gi>
+									<n-gi>
+										<n-form-item label="Set value">
+											<n-input-number 
+												v-if="newControlSelectedParameter.type == 'Float' || newControlSelectedParameter.type == 'Int'" 
+												v-model:value="currentParameterControl.setValue" 
+												size="small"
+											/>
+											<n-checkbox v-else v-model:checked="currentParameterControl.setValue" />
+										</n-form-item>
+									</n-gi>
+								</n-grid>
+
+								<n-form-item label="Value to toggle" v-if="currentParameterControl.controlType == 'toggle'">
+									<n-input-number 
+										v-if="newControlSelectedParameter.type == 'Float' || newControlSelectedParameter.type == 'Int'" 
+										v-model:value="currentParameterControl.setValue" 
+										size="small"
+									/>
+									<n-checkbox v-else v-model:checked="currentParameterControl.setValue" />
+								</n-form-item>
+							</n-collapse-transition>
 						</n-form>
 
-						<n-button type="primary">Add parameter control</n-button>
+						<n-button type="primary" :disabled="!canAddParameterControl" @click="addParameterControl">
+							<template #icon>
+								<n-icon>
+									<Plus />
+								</n-icon>
+							</template>Add
+						</n-button>
 					</n-card>
 
 					<n-divider />
@@ -152,11 +200,12 @@
 <script>
 import axios from "axios";
 import { darkTheme, useMessage } from "naive-ui";
+import { Plus } from "@vicons/fa";
 
 import Dropzone from "./components/Dropzone.vue";
 
 export default {
-	components: { Dropzone },
+	components: { Dropzone, Plus },
 	expose: [ "updateBoards" ],
 	setup() {
 		window.$message = useMessage();
@@ -171,8 +220,12 @@ export default {
 			currentAvatar: null,
 			droppedAvatar: null,
 			controlsUpdateLoading: new Set(),
-			currentParameterControl: {
-			// TODO
+			currentParameterControl: { // is reset in openAvatarFile
+				label: "",
+				selectedParameter: null,
+				controlType: null,
+				defaultValue: null,
+				setValue: null,
 			}
 		}
 	},
@@ -181,6 +234,15 @@ export default {
 			if (this.processedAvatarData === null || !(this.processedAvatarData.id in this.currentBoardData.avatars)) return;
 
 			this.changeAvatar(this.processedAvatarData.id);
+		},
+		newControlSelectedParameter() {
+			this.currentParameterControl.controlType = null;
+			this.currentParameterControl.defaultValue = null;
+			this.currentParameterControl.setValue = null;
+		},
+		"currentParameterControl.controlType": function() {
+			this.currentParameterControl.defaultValue = null;
+			this.currentParameterControl.setValue = null;
 		},
 	},
 	computed: {
@@ -205,6 +267,16 @@ export default {
 				&& this.currentBoard !== null
 				&& !(this.droppedAvatar.data.id in this.boards[this.currentBoard].avatars);
 		},
+		canAddParameterControl() {
+			return this.processedAvatarData !== null
+				&& this.newControlSelectedParameter !== null
+				&& this.currentParameterControl.label !== ""
+				&& (
+					(this.currentParameterControl.controlType === 'button' && this.currentParameterControl.setValue !== null && this.currentParameterControl.defaultValue !== null)
+					|| (this.currentParameterControl.controlType === 'toggle' && this.currentParameterControl.setValue !== null)
+					|| (this.currentParameterControl.controlType === 'range')
+				);
+		},
 		processedAvatarData() {
 			if (this.droppedAvatar == null || this.droppedAvatar.data == null) return null;
 
@@ -218,6 +290,38 @@ export default {
 					};
 				}),
 			};
+		},
+		newControlSelectOptions() {
+			if (this.processedAvatarData === null) return [];
+
+			return this.processedAvatarData.parameters.map((param, index) => {
+				return { label: `${param.name} (${param.type})`, value: index };
+			});
+		},
+		newControlSelectedParameter() {
+			if (this.currentParameterControl.selectedParameter === null) return null;
+
+			return this.processedAvatarData.parameters[this.currentParameterControl.selectedParameter];
+		},
+		newControlTypeOptions() {
+			if (this.newControlSelectedParameter === null) return [];
+
+			switch (this.newControlSelectedParameter.type) {
+				case "Int":
+				case "Bool":
+					return [
+						{ label: "Button", value: "button" },
+						{ label: "Toggle", value: "toggle" },
+					];
+				case "Float":
+					return [
+						{ label: "Button", value: "button" },
+						{ label: "Toggle", value: "toggle" },
+						{ label: "Range (Rotary)", value: "range" },
+					];
+				default:
+					return [];
+			}
 		},
 		boardUrl() {
 			if (this.boards == null || this.currentBoard == null) return "";
@@ -249,6 +353,14 @@ export default {
 		},
 		openAvatarFile(file) {
 			this.droppedAvatar = { error: null, data: null };
+			this.currentParameterControl = {
+				label: "",
+				selectedParameter: null,
+				controlType: null,
+				defaultValue: null,
+				setValue: null,
+			};
+
 			if (file.type != "application/json") {
 				this.droppedAvatar.error = "The dropped file is not a JSON file";
 				return;
@@ -284,6 +396,22 @@ export default {
 			}).catch(err => {
 				window.$message.error("Error while creating board");
 			})
+		},
+		addParameterControl() {
+			axios.post(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/create-parameter`, {
+				parameter: {
+					name: this.newControlSelectedParameter.name,
+					dataType: this.newControlSelectedParameter.type.toLowerCase(),
+					controlType: this.currentParameterControl.controlType,
+					setValue: this.currentParameterControl.setValue,
+					defaultValue: this.currentParameterControl.defaultValue,
+					label: this.currentParameterControl.label,
+				}
+			}).then(resp => {
+				return this.updateBoards();
+			}).catch(err => {
+				window.$message.error("Error while adding parameter:");
+			});
 		},
 		renameBoard() {
 			axios.put(`/api/admin/b/${this.currentBoard}/name`, { name: this.currentBoardData.name }).then(resp => {
