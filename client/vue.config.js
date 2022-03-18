@@ -20,6 +20,9 @@ module.exports = defineConfig({
       "/api": {
         target: "http://localhost:8080/",
       },
+      "/i": {
+        target: "http://localhost:8080/",
+      },
       "/socket.io": {
         target: "http://localhost:8080/",
         ws: true,

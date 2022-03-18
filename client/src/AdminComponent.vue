@@ -9,6 +9,20 @@
 					<n-button type="primary" @click="addBoard">Create board</n-button>
 				</n-card>
 			</n-collapse-item>
+			<n-collapse-item title="Icons">
+				<n-card>
+					<n-grid :cols="8">
+						<n-gi v-for="icon in icons" :key="icon.id">
+							<n-image width="100" :src="'/i/' + icon.id" />
+							<n-button>Delete</n-button>
+						</n-gi>
+					</n-grid>
+
+					<n-upload name="icon" action="/api/admin/upload-icon" :show-file-list="false" >
+						<n-button>Upload Icon</n-button>
+					</n-upload>
+				</n-card>
+			</n-collapse-item>
 		</n-collapse>
 
 		<n-divider />
@@ -214,6 +228,7 @@ export default {
 		return {
 			darkTheme,
 			newBoardName: "",
+			icons: [],
 			boards: null,
 			currentBoard: null,
 			currentBoardData: {},
@@ -343,6 +358,10 @@ export default {
 				this.currentBoardData = Object.assign({ newPassword: "" }, this.boards[this.currentBoard]);
 			}
 		},
+		async updateIcons() {
+			const resp = await axios.get("/api/admin/icons");
+			this.icons = resp.data.icons;
+		},
 		changeBoard(boardId) {
 			this.currentBoard = boardId;
 			this.currentBoardData = Object.assign({ newPassword: "" }, this.boards[boardId]);
@@ -443,6 +462,7 @@ export default {
 	},
 	async created() {
 		await this.updateBoards();
+		await this.updateIcons();
 	}
 };
 </script>

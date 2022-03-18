@@ -47,14 +47,20 @@ class Board {
 		await this._config.setKey("boards", this.id, this.serialize());
 	}
 
-	_load() {
+	_load(verifyMode) {
 		function deserializeAvatar(avi_def) {
 			const deserialized = {
 				controls: Object.fromEntries(
-					Object.entries(avi_def.controls).map(c => [
-						c[0], 
-						new AvatarParamControl({ ...c[1], id: c[0] })
-					])
+					Object.entries(avi_def.controls).map(c => {
+						if (verifyMode) {
+							console.log(`Validating avatar parameter ${c[0]}`);
+						}
+						
+						return [
+							c[0], 
+							new AvatarParamControl({ ...c[1], id: c[0] })
+						];
+					})
 				),
 				name: avi_def.name,
 			};
@@ -67,7 +73,12 @@ class Board {
 		this._name = boardDef.name;
 
 		this._avatars = Object.fromEntries(
-			Object.entries(boardDef.avatars).map(elem => [elem[0], deserializeAvatar(elem[1])] )
+			Object.entries(boardDef.avatars).map(elem => {
+				if (verifyMode) {
+					console.log(`Validating avatar ${elem[0]}`);
+				}
+				return [elem[0], deserializeAvatar(elem[1])];
+			})
 		);
 	}
 
@@ -238,18 +249,26 @@ class BoardManager {
 		return board;
 	}
 
-	getBoard(id) {
+	getBoard(id, verifyMode=false) {
 		if (!this.boardExists(id)) {
 			throw new Error("This board doesn't exist");
 		}
 
 		const board = new Board(id, this._config);
-		board._load();
+		board._load(verifyMode);
 		return board;
 	}
 
 	getAllBoardIds() {
 		return Object.keys(this._config.getKey("boards"));
+	}
+
+	// try to load all boards from the config in order to throw an exception right at the start of the server
+	tryLoadingAllBoards() {
+		for (let boardId of this.getAllBoardIds()) {
+			console.log(`Validating board ${boardId}`);
+			this.getBoard(boardId, true);
+		}
 	}
 }
 

@@ -5,6 +5,7 @@ const path = require("path");
 const express = require("express");
 const expressSession = require("express-session");
 const MemoryStore = require("memorystore")(expressSession);
+const fileUpload = require("express-fileupload");
 const { Server } = require("socket.io");
 const bcrypt = require("bcrypt");
 const prompt = require("prompt");
@@ -16,6 +17,7 @@ const { OscManager } = require("./src/osc_manager");
 const { VrcAvatarManager } = require("./src/vrc_avatar_manager");
 const { BoardManager, requireBoard } = require("./src/board_manager");
 const { SocketManager } = require("./src/socket_manager");
+const { IconManager } = require("./src/icon_manager");
 const { requireLogin, requireLoginSocketIO, requireLoginInternal, requireAdmin } = require("./src/require_login");
 const run = require("./src/express_async_middleware");
 
@@ -28,6 +30,7 @@ const config = new Config(process.argv[2]);
 const oscManager = new OscManager(config);
 const avatarManager = new VrcAvatarManager(oscManager);
 const boardManager = new BoardManager(config);
+const iconManager = new IconManager(config);
 
 const app = express();
 const httpServer = createServer(app);
@@ -37,6 +40,14 @@ const socketManager = new SocketManager(io, boardManager, avatarManager);
 
 async function main() {
 	await config.init();
+	await iconManager.init();
+
+	try {
+		boardManager.tryLoadingAllBoards();
+	} catch(e) {
+		console.log(`Validation of board has failed: ${e.message}`);
+		process.exit(1);
+	}
 
 	if (config.getRequiredKey("admin", "password") === null) {
 		prompt.start({ noHandleSIGINT: true });
@@ -93,6 +104,17 @@ async function main() {
 
 	app.get("/admin", function(req, res) {
 		res.sendFile(path.join(__dirname, "client/dist/admin.html"));
+	});
+
+	app.get("/i/:iconId", function(req, res) {
+		let iconPath;
+		try {
+			iconPath = iconManager.getIconPath(req.params.iconId);
+		} catch(_) {
+			return res.sendStatus(404);
+		}
+
+		res.sendFile(iconPath);
 	});
 
 	io.use((socket, next) => {
@@ -227,6 +249,43 @@ async function main() {
 	const adminRouter = express.Router({ mergeParams: true });
 
 	adminRouter.use(requireAdmin);
+
+	adminRouter.post("/upload-icon", fileUpload({
+		limits: {
+			files: 1
+		}
+	}), run(async function(req, res) {
+		if (!("icon" in req.files)) {
+			return res.sendStatus(400);
+		}
+
+		const uploadedFile = req.files.icon;
+
+		if (uploadedFile.mimetype !== "image/png") {
+			return res.sendStatus(400);
+		}
+
+		const icon = await iconManager.uploadIcon(uploadedFile.data, uploadedFile.size);
+
+		res.json({
+			icon
+		});
+	}));
+
+	adminRouter.get("/icons", function(req, res) {
+		res.json({
+			icons: iconManager.getAllIcons(),
+		});
+	});
+
+	adminRouter.delete("/icon/:iconId", run(async function(req, res) {
+		try {
+			await iconManager.deleteIcon(req.params.iconId);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+	}));
 
 	adminRouter.get("/boards", function(req, res) {
 		return res.json({
@@ -384,4 +443,5 @@ async function main() {
 
 main().catch(err => {
 	console.log(err);
+	process.exit(1);
 });

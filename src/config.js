@@ -20,6 +20,9 @@ const DEFAULT_CONFIG = {
 			port: 9001,
 		}
 	},
+	icons: {
+		path: "./icons",
+	},
 	admin: {
 		password: null,
 	},
