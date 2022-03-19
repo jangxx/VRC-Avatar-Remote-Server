@@ -119,8 +119,13 @@
 							<n-collapse-transition :show="currentParameterControl.controlType == 'toggle' || currentParameterControl.controlType == 'button'">
 								<n-grid :cols="2" :y-gap="10">
 									<n-gi :span="2">
-										<n-text>
+										<n-text v-if="currentParameterControl.controlType == 'button'">
 											The button will always toggle between the <i>current</i> value and the <i>set value</i>, but if the server has not received a value for this parameter yet, it needs a default value to reset it to.
+											You should set this to the default value configured for the parameter in Unity
+										</n-text>
+										<n-text v-if="currentParameterControl.controlType == 'toggle'">
+											The toggle will always toggle between the <i>default</i> value and the <i>set value</i>.
+											If the value is not set to the <i>set value</i> it will display untoggled and clicking on it will set the value again.
 											You should set this to the default value configured for the parameter in Unity
 										</n-text>
 									</n-gi>

@@ -227,10 +227,10 @@ h1, h2, div.text {
 
       .background-icon {
         position: absolute;
-        top: 0px;
-        left: 0px;
-        width: 100%;
-        height: 100%;
+        top: 10px;
+        left: 10px;
+        width: calc(100% - 20px);
+        height: calc(100% - 20px);
         opacity: 0.3;
         z-index: -10;
       }
