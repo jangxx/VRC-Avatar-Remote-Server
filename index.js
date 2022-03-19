@@ -439,13 +439,14 @@ async function main() {
 	avatarManager.init();
 	socketManager.init();
 
-	// for testing and development only
-	setTimeout(() => {
-		oscManager.emit("message", {
-			address: "/avatar/change", 
-			value: "avtr_418bf257-d957-46c9-be51-bf97ac25b862",
-		});
-	}, 1000);
+	if ("TEST_TRIGGER" in process.env) {
+		setTimeout(() => {
+			oscManager.emit("message", {
+				address: "/avatar/change", 
+				value: "avtr_418bf257-d957-46c9-be51-bf97ac25b862",
+			});
+		}, 1000);
+	}
 }
 
 main().catch(err => {
