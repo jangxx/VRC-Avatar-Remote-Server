@@ -72,6 +72,7 @@ class BackendAvatarParamControl extends AvatarParamControl {
 		if (this._controlType !== "toggle") throw new Error("This method is not allowed for this control type");
 
 		const currentVal = avatarManager.getParameter(this.name);
+		console.log(this._label, this._name, currentVal);
 		return currentVal !== null && currentVal === this._setValue;
 	}
 }
