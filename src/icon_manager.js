@@ -40,13 +40,7 @@ class IconManager {
 		const images = await globAsync(path.join(this._base_path, "*.png"));
 
 		for (let imagePath of images) {
-			const matches = imagePath.match(/.*?\/(.*?)\.png/);
-
-			if (matches === null) {
-				throw new Error(`Icon ${imagePath} has an invalid filename`);
-			}
-
-			const imageId = matches[1];
+			const imageId = path.parse(imagePath).name;
 			
 			const iconDef = {
 				path: imagePath,

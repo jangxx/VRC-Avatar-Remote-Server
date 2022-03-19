@@ -274,7 +274,9 @@ async function main() {
 
 	adminRouter.get("/icons", function(req, res) {
 		res.json({
-			icons: iconManager.getAllIcons(),
+			icons: iconManager.getAllIcons().map(icon => {
+				return { id: icon.id, size: icon.size };
+			}),
 		});
 	});
 
