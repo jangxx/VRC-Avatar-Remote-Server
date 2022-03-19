@@ -71,7 +71,7 @@ class IconManager {
 			throw new Error("This icon does not exist");
 		}
 
-		return path.join(process.cwd(), this._icons[id].path);
+		return path.resolve(process.cwd(), this._icons[id].path);
 	}
 
 	async uploadIcon(data, size) {
