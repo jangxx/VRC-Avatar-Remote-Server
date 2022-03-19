@@ -65,9 +65,7 @@ function requireAdmin(req, res, next) {
 	if (requireLoginInternal("admin", req.session)) {
 		return next();
 	} else {
-		const err = new Error();
-		err.statusCode = 403;
-		return next(err);
+		return res.sendStatus(403);
 	}
 }
 

@@ -62,6 +62,10 @@ class IconManager {
 		return Object.values(this._icons);
 	}
 
+	iconExists(id) {
+		return id in this._icons;
+	}
+
 	getIconPath(id) {
 		if (!(id in this._icons)) {
 			throw new Error("This icon does not exist");

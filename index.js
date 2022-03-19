@@ -29,8 +29,8 @@ if (process.argv.length < 3) {
 const config = new Config(process.argv[2]);
 const oscManager = new OscManager(config);
 const avatarManager = new VrcAvatarManager(oscManager);
-const boardManager = new BoardManager(config);
 const iconManager = new IconManager(config);
+const boardManager = new BoardManager(config, iconManager);
 
 const app = express();
 const httpServer = createServer(app);
@@ -285,6 +285,10 @@ async function main() {
 			err.statusCode = 400;
 			throw err;
 		}
+
+		await boardManager.removeAllMissingIcons();
+
+		res.end();
 	}));
 
 	adminRouter.get("/boards", function(req, res) {
@@ -408,6 +412,7 @@ async function main() {
 				req.body.parameter.setValue,
 				req.body.parameter.defaultValue,
 				req.body.parameter.label,
+				req.body.parameter.icon,
 			);
 
 			await req.board.updateParameter(req.params.avatarId, parameter);
@@ -433,12 +438,12 @@ async function main() {
 	socketManager.init();
 
 	// for testing and development only
-	// setTimeout(() => {
-	// 	oscManager.emit("message", {
-	// 		address: "/avatar/change", 
-	// 		value: "avtr_418bf257-d957-46c9-be51-bf97ac25b862",
-	// 	});
-	// }, 1000);
+	setTimeout(() => {
+		oscManager.emit("message", {
+			address: "/avatar/change", 
+			value: "avtr_418bf257-d957-46c9-be51-bf97ac25b862",
+		});
+	}, 1000);
 }
 
 main().catch(err => {

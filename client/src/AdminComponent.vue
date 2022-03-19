@@ -13,12 +13,20 @@
 				<n-card>
 					<n-grid :cols="8">
 						<n-gi v-for="icon in icons" :key="icon.id">
-							<n-image width="100" :src="'/i/' + icon.id" />
-							<n-button>Delete</n-button>
+							<n-space :vertical="true" align="center">
+								<n-image width="100" height="100" :src="'/i/' + icon.id" />
+								<n-button secondary round type="error" @click="deleteIcon(icon.id)">
+									<template #icon>
+										<n-icon><IconTrash /></n-icon>
+									</template>
+								</n-button>
+							</n-space>
 						</n-gi>
 					</n-grid>
 
-					<n-upload name="icon" action="/api/admin/upload-icon" :show-file-list="false" >
+					<n-divider />
+
+					<n-upload name="icon" action="/api/admin/upload-icon" :show-file-list="false" :on-finish="files => updateIcons()" >
 						<n-button>Upload Icon</n-button>
 					</n-upload>
 				</n-card>
@@ -109,7 +117,7 @@
 								<n-select v-model:value="currentParameterControl.controlType" placeholder="Select control type" :options="newControlTypeOptions" :disabled="newControlSelectedParameter === null" />
 							</n-form-item>
 							<n-collapse-transition :show="currentParameterControl.controlType == 'toggle' || currentParameterControl.controlType == 'button'">
-								<n-grid v-if="currentParameterControl.controlType == 'button'" :cols="2" :y-gap="10">
+								<n-grid :cols="2" :y-gap="10">
 									<n-gi :span="2">
 										<n-text>
 											The button will always toggle between the <i>current</i> value and the <i>set value</i>, but if the server has not received a value for this parameter yet, it needs a default value to reset it to.
@@ -118,9 +126,12 @@
 									</n-gi>
 									<n-gi>
 										<n-form-item label="Default value">
-											<n-input-number v-if="newControlSelectedParameter.type == 'Float'" v-model:value="currentParameterControl.defaultValue" size="small" step="0.1" />
-											<n-input-number v-if="newControlSelectedParameter.type == 'Int'" v-model:value="currentParameterControl.defaultValue" size="small" />
-											<n-checkbox v-if="newControlSelectedParameter.type == 'Bool'" v-model:checked="currentParameterControl.defaultValue" />
+											<n-input-number 
+												v-if="newControlSelectedParameter.type == 'Float' || newControlSelectedParameter.type == 'Int'" 
+												v-model:value="currentParameterControl.defaultValue" 
+												size="small"
+											/>
+											<n-checkbox v-else v-model:checked="currentParameterControl.defaultValue" />
 										</n-form-item>
 									</n-gi>
 									<n-gi>
@@ -134,22 +145,13 @@
 										</n-form-item>
 									</n-gi>
 								</n-grid>
-
-								<n-form-item label="Value to toggle" v-if="currentParameterControl.controlType == 'toggle'">
-									<n-input-number 
-										v-if="newControlSelectedParameter.type == 'Float' || newControlSelectedParameter.type == 'Int'" 
-										v-model:value="currentParameterControl.setValue" 
-										size="small"
-									/>
-									<n-checkbox v-else v-model:checked="currentParameterControl.setValue" />
-								</n-form-item>
 							</n-collapse-transition>
 						</n-form>
 
 						<n-button type="primary" :disabled="!canAddParameterControl" @click="addParameterControl">
 							<template #icon>
 								<n-icon>
-									<Plus />
+									<IconPlus />
 								</n-icon>
 							</template>Add
 						</n-button>
@@ -161,39 +163,63 @@
 				<n-space v-if="currentAvatarData !== null" vertical size="large">
 					<n-card v-for="control in currentAvatarData.controls" :key="control.id">
 						<n-form>
-							<n-grid x-gap="12" :cols="3">
+							<n-grid :cols="4" x-gap="12">
 								<n-gi>
-									<n-form-item label="Control type">
-										<n-input size="small" round :value="control.controlType" readonly disabled />
-									</n-form-item>
+									<n-space :vertical="true" align="stretch">
+										<n-space v-if="control.icon !== null" justify="center">
+											<n-image width="100" height="100" :src="'/i/' + control.icon" :preview-disabled="true" />
+										</n-space>
+										<n-empty v-else description="No icon set" size="medium">
+											<template #icon>
+												<n-icon>
+													<IconImage />
+												</n-icon>
+											</template>
+										</n-empty>
+										<n-select :options="iconSelectOptions" :render-tag="renderIconSelectTag" :render-label="renderIconSelectOption" v-model:value="control.icon" />
+										<!-- <n-button secondary round>
+											<template #icon>
+												<n-icon><IconEdit /></n-icon>
+											</template>
+										</n-button> -->
+									</n-space>
 								</n-gi>
-								<n-gi>
-									<n-form-item label="Data type">
-										<n-input size="small" round :value="control.dataType" readonly disabled />
-									</n-form-item>
-								</n-gi>
-								<n-gi>
-									<n-form-item label="Parameter name">
-										<n-input size="small" round :value="control.name" readonly disabled />
-									</n-form-item>
-								</n-gi>
-								<n-gi>
-									<n-form-item v-if="control.controlType === 'button'" label="Default value">
-										<n-input-number v-if="control.dataType == 'float'" v-model:value="control.defaultValue" size="small" round step="0.1" />
-										<n-input-number v-if="control.dataType == 'int'" v-model:value="control.defaultValue" size="small" round />
-										<n-checkbox v-if="control.dataType == 'bool'" v-model:checked="control.defaultValue" />
-									</n-form-item>
-								</n-gi>
-								<n-gi>
-									<n-form-item v-if="control.controlType != 'range'" label="Set value">
-										<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.setValue" size="small" round />
-										<n-checkbox v-else v-model:checked="control.setValue" />
-									</n-form-item>
-								</n-gi>
-								<n-gi>
-									<n-form-item label="Label">
-										<n-input size="small" v-model:value="control.label" />
-									</n-form-item>
+
+								<n-gi :span="3">
+									<n-grid x-gap="12" :cols="3">
+										<n-gi>
+											<n-form-item label="Control type">
+												<n-input size="small" round :value="control.controlType" readonly disabled />
+											</n-form-item>
+										</n-gi>
+										<n-gi>
+											<n-form-item label="Data type">
+												<n-input size="small" round :value="control.dataType" readonly disabled />
+											</n-form-item>
+										</n-gi>
+										<n-gi>
+											<n-form-item label="Parameter name">
+												<n-input size="small" round :value="control.name" readonly disabled />
+											</n-form-item>
+										</n-gi>
+										<n-gi>
+											<n-form-item v-if="control.controlType != 'range'" label="Default value">
+												<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.defaultValue" size="small" round />
+												<n-checkbox v-else v-model:checked="control.defaultValue" />
+											</n-form-item>
+										</n-gi>
+										<n-gi>
+											<n-form-item v-if="control.controlType != 'range'" label="Set value">
+												<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.setValue" size="small" round />
+												<n-checkbox v-else v-model:checked="control.setValue" />
+											</n-form-item>
+										</n-gi>
+										<n-gi>
+											<n-form-item label="Label">
+												<n-input size="small" v-model:value="control.label" />
+											</n-form-item>
+										</n-gi>
+									</n-grid>
 								</n-gi>
 							</n-grid>
 							<n-space justify="end">
@@ -213,13 +239,15 @@
 
 <script>
 import axios from "axios";
-import { darkTheme, useMessage } from "naive-ui";
-import { Plus } from "@vicons/fa";
+import { darkTheme, NText, useMessage } from "naive-ui";
+import { Plus, Trash, Edit, Image } from "@vicons/fa";
+import { h } from "vue";
 
+import ImageSelectOption from "./components/ImageSelectOption.vue";
 import Dropzone from "./components/Dropzone.vue";
 
 export default {
-	components: { Dropzone, Plus },
+	components: { Dropzone, IconPlus: Plus, IconTrash: Trash, /*IconEdit: Edit,*/ IconImage: Image },
 	expose: [ "updateBoards" ],
 	setup() {
 		window.$message = useMessage();
@@ -288,7 +316,7 @@ export default {
 				&& this.currentParameterControl.label !== ""
 				&& (
 					(this.currentParameterControl.controlType === 'button' && this.currentParameterControl.setValue !== null && this.currentParameterControl.defaultValue !== null)
-					|| (this.currentParameterControl.controlType === 'toggle' && this.currentParameterControl.setValue !== null)
+					|| (this.currentParameterControl.controlType === 'toggle' && this.currentParameterControl.setValue !== null && this.currentParameterControl.defaultValue !== null)
 					|| (this.currentParameterControl.controlType === 'range')
 				);
 		},
@@ -347,7 +375,12 @@ export default {
 			if (this.currentBoardData === null || this.currentAvatar == null) return null;
 
 			return this.currentBoardData.avatars[this.currentAvatar];
-		}
+		},
+		iconSelectOptions() {
+			return [{ value: null, label: "No icon" }].concat(this.icons.map(icon => {
+				return { value: icon.id, label: icon.id };
+			}));
+		},
 	},
 	methods: {
 		async updateBoards() {
@@ -443,6 +476,8 @@ export default {
 			}).catch(err => {});
 		},
 		updateParameterControl(control) {
+			console.log(Object.assign({}, control));
+
 			this.controlsUpdateLoading.add(control.id);
 			axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/p/${control.id}`, { parameter: control }).then(resp => {
 				return this.updateBoards();
@@ -459,6 +494,22 @@ export default {
 				window.$message.error("Error while deleting parameter");
 			});
 		},
+		deleteIcon(icon_id) {
+			axios.delete(`/api/admin/icon/${icon_id}`).then(resp => {
+				return Promise.all([
+					this.updateIcons(),
+					this.updateBoards(),
+				]);
+			}).catch(err => {
+				window.$message.error("Error while deleting icon");
+			});
+		},
+		renderIconSelectOption(option) {
+			return h(ImageSelectOption, { value: option.value, label: option.label });
+		},
+		renderIconSelectTag(option) {
+			return h(NText, {}, () => option.option.label);
+		}
 	},
 	async created() {
 		await this.updateBoards();

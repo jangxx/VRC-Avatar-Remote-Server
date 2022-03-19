@@ -2,6 +2,7 @@ const { v4: uuiv4 } = require("uuid");
 const bcrypt = require("bcrypt");
 
 const { Config } = require("./config");
+const { IconManager } = require("./icon_manager");
 const {BackendAvatarParamControl: AvatarParamControl } = require("./backend_avatar_param_control");
 
 class Board {
@@ -9,10 +10,12 @@ class Board {
 	 * 
 	 * @param {string} id 
 	 * @param {Config} config 
+	 * @param {IconManager} iconManager
 	 */
-	constructor(id, config) {
+	constructor(id, config, iconManager) {
 		this._id = id;
 		this._config = config;
+		this._iconManager = iconManager;
 
 		this._password = null;
 		this._name = "Unnamed Board " + Math.floor(Math.random() * 1000000);
@@ -164,7 +167,25 @@ class Board {
 		await this._store();
 	}
 
-	constructParameter(avid, id, name, dataType, controlType, setValue, defaultValue, label=null) {
+	async removeMissingIcons() {
+		let performed_change = false;
+
+		for (let avid in this._avatars) {
+			for (let controlId in this._avatars[avid].controls) {
+				const control = this._avatars[avid].controls[controlId];
+				if (!this._iconManager.iconExists(control.icon)) {
+					control.unsetIcon();
+					performed_change = true;
+				}
+			}
+		}
+
+		if (performed_change) {
+			await this._store();
+		}
+	}
+
+	constructParameter(avid, id, name, dataType, controlType, setValue, defaultValue, label=null, icon=null) {
 		if (!this.hasAvatar(avid)) throw new Error("This avatar is not part of this board");
 
 		// this also performs validation
@@ -176,12 +197,13 @@ class Board {
 			setValue,
 			defaultValue,
 			label,
+			icon,
 		});
 
 		return parameterControl;
 	}
 
-	async createParameter(avid, name, dataType, controlType, setValue, defaultValue, label=null) {
+	async createParameter(avid, name, dataType, controlType, setValue, defaultValue, label=null, icon=null) {
 		const parameterControl = this.constructParameter(
 			avid,
 			uuiv4(), // new random id 
@@ -190,7 +212,8 @@ class Board {
 			controlType, 
 			setValue, 
 			defaultValue,
-			label);
+			label,
+			icon);
 
 		this._avatars[avid].controls[parameterControl.id] = parameterControl;
 
@@ -232,10 +255,12 @@ class Board {
 class BoardManager {
 	/**
 	 * 
-	 * @param {Config} config 
+	 * @param {Config} config
+	 * @param {IconManager} iconManager
 	 */
-	constructor(config) {
+	constructor(config, iconManager) {
 		this._config = config;
+		this._iconManager = iconManager;
 	}
 
 	boardExists(id) {
@@ -254,7 +279,7 @@ class BoardManager {
 			throw new Error("This board doesn't exist");
 		}
 
-		const board = new Board(id, this._config);
+		const board = new Board(id, this._config, this._iconManager);
 		board._load(verifyMode);
 		return board;
 	}
@@ -268,6 +293,12 @@ class BoardManager {
 		for (let boardId of this.getAllBoardIds()) {
 			console.log(`Validating board ${boardId}`);
 			this.getBoard(boardId, true);
+		}
+	}
+
+	async removeAllMissingIcons() {
+		for (let boardId of this.getAllBoardIds()) {
+			await this.getBoard(boardId).removeMissingIcons();
 		}
 	}
 }

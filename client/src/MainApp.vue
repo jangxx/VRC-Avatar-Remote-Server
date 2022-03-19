@@ -23,6 +23,7 @@
                 @click="performAction(control)"
               >
                 <div class="title-wrapper"><div class="title">{{ control.label }}</div></div>
+                <img v-if="control.icon !== null" :src="'/i/' + control.icon" class="background-icon" />
               </div>
               <div
                 v-else-if="control.types.control === 'toggle'"
@@ -30,6 +31,7 @@
                 :class="{ 'toggled': control.isToggled(avatarParameterValues) }"
                 @click="performAction(control)"
               >
+                <img v-if="control.icon !== null" :src="'/i/' + control.icon" class="background-icon" />
                 <div class="title-wrapper"><div class="title">{{ control.label }}</div></div>
                 <div class="slider-wrapper"><div class="slider"></div></div>
               </div>
@@ -40,6 +42,7 @@
                   v-model="avatarParameterValues[control.name]" 
                   @update:modelValue="v => setParamValue(control, v)"
                 ></RadialMenu>
+                <img v-if="control.icon !== null" :src="'/i/' + control.icon" class="background-icon" />
               </div>
             </div>
           </div>
@@ -200,6 +203,8 @@ h1, h2, div.text {
       border-color: #343434;
       border-width: 1px;
       border-radius: 20%;
+      position: relative;
+      overflow: hidden;
 
       .title-wrapper {
         position: absolute;
@@ -220,11 +225,21 @@ h1, h2, div.text {
         }
       }
 
+      .background-icon {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        width: 100%;
+        height: 100%;
+        opacity: 0.3;
+        z-index: -10;
+      }
+
       &.control-button, &.control-toggle {
         cursor: pointer;
-
+        
         &:hover {
-          background-color: #232323;
+          background-color: rgba(35, 35, 35, 0.7);
         }
       }
 
