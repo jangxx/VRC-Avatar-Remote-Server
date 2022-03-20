@@ -312,6 +312,11 @@ async function main() {
 		});
 	}));
 
+	adminRouter.delete("/b/:board", requireBoard("board", boardManager), run(async function(req, res) {
+		await boardManager.deleteBoard(req.board.id);
+		res.end();
+	}));
+
 	adminRouter.put("/b/:board/name", requireBoard("board", boardManager), run(async function(req, res) {
 		if (!("name" in req.body)) {
 			return res.sendStatus(400);

@@ -119,6 +119,23 @@ class Config {
 
 		await this._storeConfig();
 	}
+
+	async unsetKey(...path) {
+		if (this._config === null) throw new Error("Config is not initialized yet");
+
+		let cur = this._config;
+		for (let i = 0; i < path.length - 1; i++) {
+			if (!(path[i] in cur)) {
+				cur[path[i]] = {};
+			}
+
+			cur = cur[path[i]];
+		}
+		
+		delete cur[path[path.length - 1]];
+
+		await this._storeConfig();
+	}
 }
 
 module.exports = { Config };

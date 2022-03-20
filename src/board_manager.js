@@ -284,6 +284,14 @@ class BoardManager {
 		return board;
 	}
 
+	async deleteBoard(id) {
+		if (!this.boardExists(id)) {
+			throw new Error("This board doesn't exist");
+		}
+
+		await this._config.unsetKey("boards", id);
+	}
+
 	getAllBoardIds() {
 		return Object.keys(this._config.getKey("boards"));
 	}

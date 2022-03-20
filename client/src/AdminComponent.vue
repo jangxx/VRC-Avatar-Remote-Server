@@ -35,7 +35,7 @@
 
 		<n-divider />
 
-		<n-select :on-update:value="changeBoard" :options="boardSelectOptions" placeholder="Select board"></n-select>
+		<n-select :on-update:value="changeBoard" :value="currentBoard" :options="boardSelectOptions" placeholder="Select board"></n-select>
 
 		<div class="spacer"></div>
 
@@ -45,12 +45,23 @@
 			<n-divider />
 
 			<n-collapse style="margin-bottom: 20px">
-				<n-collapse-item title="Rename board">
+				<n-collapse-item title="Rename/Delete board">
 					<n-card>
 						<n-space vertical size="large">
 							<n-input v-model:value="currentBoardData.name" placeholder="Board name" />
 
-							<n-space justify="end">
+							<n-space justify="space-between">
+								<n-popconfirm @positive-click="deleteBoard">
+									<template #icon>
+										<n-icon color="red">
+											<IconExclamationCircle />
+										</n-icon>
+									</template>
+									<template #trigger>
+										<n-button type="error">Delete board</n-button>
+									</template>
+									Are you sure you want to delete this board?
+								</n-popconfirm>
 								<n-button :disabled="boards[currentBoard].name == currentBoardData.name" @click="renameBoard">Rename board</n-button>
 							</n-space>
 						</n-space>
@@ -80,7 +91,7 @@
 
 					<n-input readonly size="small" value="%HOMEPATH%\AppData\LocalLow\VRChat\VRChat\OSC" ref="oscPathInput" @click="$refs.oscPathInput.select()"></n-input>
 					
-					<Dropzone @file="openAvatarFile"></Dropzone>
+					<Dropzone @avatar="handleDroppedAvatar"></Dropzone>
 
 					<div v-if="droppedAvatar !== null">
 						<n-text type="error" v-if="droppedAvatar.error !== null">
@@ -111,22 +122,33 @@
 								<n-input v-model:value="currentParameterControl.label" placeholder="Name of the control" />
 							</n-form-item>
 							<n-form-item label="Parameter">
-								<n-select v-model:value="currentParameterControl.selectedParameter" placeholder="Select parameter" :options="newControlSelectOptions" />
+								<n-select v-model:value="currentParameterControl.selectedParameter" placeholder="Select parameter" :options="newControlSelectOptions" filterable />
 							</n-form-item>
-							<n-form-item label="Control type">
-								<n-select v-model:value="currentParameterControl.controlType" placeholder="Select control type" :options="newControlTypeOptions" :disabled="newControlSelectedParameter === null" />
-							</n-form-item>
+							<n-collapse-transition :show="newControlSelectedParameter !== null">
+								<n-form-item label="Control type">
+									<!-- <n-select v-model:value="currentParameterControl.controlType" placeholder="Select control type" :options="newControlTypeOptions" :disabled="newControlSelectedParameter === null" /> -->
+									<n-radio-group v-model:value="currentParameterControl.controlType">
+										<n-radio-button
+											v-for="option in newControlTypeOptions"
+											:key="option.value"
+											:value="option.value"
+										>
+											{{ option.label }}
+										</n-radio-button>
+									</n-radio-group>
+								</n-form-item>
+							</n-collapse-transition>
 							<n-collapse-transition :show="currentParameterControl.controlType == 'toggle' || currentParameterControl.controlType == 'button'">
 								<n-grid :cols="2" :y-gap="10">
 									<n-gi :span="2">
 										<n-text v-if="currentParameterControl.controlType == 'button'">
 											The button will always toggle between the <i>current</i> value and the <i>set value</i>, but if the server has not received a value for this parameter yet, it needs a default value to reset it to.
-											You should set this to the default value configured for the parameter in Unity
+											You should set this to the default value configured for the parameter in Unity.
 										</n-text>
 										<n-text v-if="currentParameterControl.controlType == 'toggle'">
 											The toggle will always toggle between the <i>default</i> value and the <i>set value</i>.
 											If the value is not set to the <i>set value</i> it will display untoggled and clicking on it will set the value again.
-											You should set this to the default value configured for the parameter in Unity
+											You should set this to the default value configured for the parameter in Unity.
 										</n-text>
 									</n-gi>
 									<n-gi>
@@ -245,14 +267,14 @@
 <script>
 import axios from "axios";
 import { darkTheme, NText, useMessage } from "naive-ui";
-import { Plus, Trash, Edit, Image } from "@vicons/fa";
+import { Plus, Trash, ExclamationCircle, Image } from "@vicons/fa";
 import { h } from "vue";
 
 import ImageSelectOption from "./components/ImageSelectOption.vue";
 import Dropzone from "./components/Dropzone.vue";
 
 export default {
-	components: { Dropzone, IconPlus: Plus, IconTrash: Trash, /*IconEdit: Edit,*/ IconImage: Image },
+	components: { Dropzone, IconPlus: Plus, IconTrash: Trash, IconExclamationCircle: ExclamationCircle, IconImage: Image },
 	expose: [ "updateBoards" ],
 	setup() {
 		window.$message = useMessage();
@@ -402,13 +424,15 @@ export default {
 		},
 		changeBoard(boardId) {
 			this.currentBoard = boardId;
-			this.currentBoardData = Object.assign({ newPassword: "" }, this.boards[boardId]);
+			if (boardId !== null) {
+				this.currentBoardData = Object.assign({ newPassword: "" }, this.boards[boardId]);
+			}
 			this.currentAvatar = null;
 		},
 		changeAvatar(avatarId) {
 			this.currentAvatar = avatarId;
 		},
-		openAvatarFile(file) {
+		handleDroppedAvatar(avatarData) {
 			this.droppedAvatar = { error: null, data: null };
 			this.currentParameterControl = {
 				label: "",
@@ -418,20 +442,7 @@ export default {
 				setValue: null,
 			};
 
-			if (file.type != "application/json") {
-				this.droppedAvatar.error = "The dropped file is not a JSON file";
-				return;
-			}
-
-			const reader = new FileReader();
-			reader.onload = evt => {
-				try {
-				this.droppedAvatar.data = JSON.parse(evt.target.result);
-				} catch(e) {
-				this.droppedAvatar.error = "Could not parse JSON";
-				}
-			}
-			reader.readAsText(file);
+			this.droppedAvatar.data = avatarData;
 		},
 		addAvatar() {
 			axios.post(`/api/admin/b/${this.currentBoard}/add-avatar`, {
@@ -472,6 +483,12 @@ export default {
 		},
 		renameBoard() {
 			axios.put(`/api/admin/b/${this.currentBoard}/name`, { name: this.currentBoardData.name }).then(resp => {
+				return this.updateBoards();
+			}).catch(err => {});
+		},
+		deleteBoard() {
+			axios.delete(`/api/admin/b/${this.currentBoard}`).then(resp => {
+				this.changeBoard(null);
 				return this.updateBoards();
 			}).catch(err => {});
 		},
