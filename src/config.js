@@ -7,6 +7,7 @@ const DEFAULT_CONFIG = {
 		address: "0.0.0.0",
 		port: 8080,
 		sessionSecret: randomstring.generate(32), // this will be stored on first server start and subsequently used
+		api_keys: [],
 	},
 	osc: {
 		log_all_outputs: false,
@@ -26,8 +27,14 @@ const DEFAULT_CONFIG = {
 	admin: {
 		password: null,
 	},
-	boards: {}
+	boards: {},
 };
+
+class KeyNotFoundError extends Error {
+	constructor(message) {
+		super(message);
+	}
+}
 
 class Config {
 	constructor(config_file_path) {
@@ -50,21 +57,62 @@ class Config {
 		await fs.writeFileSync(this._path, yaml.stringify(this._config));
 	}
 
-	getKey(...path) {
+	_getKey(path) {
 		if (this._config === null) throw new Error("Config is not initialized yet");
 
 		let cur = this._config;
 		for (let p of path) {
 			if (!(p in cur)) {
-				return null;
+				throw new KeyNotFoundError();
 			}
 			cur = cur[p];
 		}
-		
-		if (typeof cur === "object") {
+
+		if (typeof cur === "object" && cur !== null && !Array.isArray(cur)) {
 			return Object.assign({}, cur);
+		} else if (typeof cur === "object" && cur !== null && Array.isArray(cur)) {
+			return [...cur];
 		} else {
 			return cur;
+		}
+	}
+
+	getKey(...path) {
+		try {
+			const result = this._getKey(path);
+			return result;
+		} catch(err) {
+			if (err instanceof KeyNotFoundError) {
+				return null;
+			} else {
+				throw err;
+			}
+		}
+	}
+
+	getKeyWithDefault(...params) {
+		try {
+			const result = this._getKey(params.slice(0, -1));
+			return result;
+		} catch(err) {
+			if (err instanceof KeyNotFoundError) {
+				return params[params.length - 1];
+			} else {
+				throw err;
+			}
+		}
+	}
+
+	getRequiredKey(...path) {
+		try {
+			const result = this._getKey(path);
+			return result;
+		} catch(err) {
+			if (err instanceof KeyNotFoundError) {
+				throw new Error(`The required config key ${path.join(".")} is missing from the config`);
+			} else {
+				throw err;
+			}
 		}
 	}
 
@@ -79,26 +127,6 @@ class Config {
 			cur = cur[p];
 		}
 		return true;
-	}
-
-	getRequiredKey(...path) {
-		if (this._config === null) throw new Error("Config is not initialized yet");
-
-		let cur = this._config;
-		for (let p of path) {
-			if (!(p in cur)) {
-				throw new Error(`The required config key ${path.join(".")} is missing from the config`);
-			}
-			cur = cur[p];
-		}
-
-		if (typeof cur === "object" && cur !== null && !Array.isArray(yourVariable)) {
-			return Object.assign({}, cur);
-		} else if (typeof cur === "object" && cur !== null && Array.isArray(yourVariable)) {
-			return [...cur]
-		} else {
-			return cur;
-		}
 	}
 
 	async setKey(...params) {

@@ -131,4 +131,5 @@ out
 .pnp.*
 
 config.yml
+config.yaml
 icons/
