@@ -92,12 +92,11 @@ async function main() {
 	});
 
 	app.set('trust proxy', 1);
-	app.use(function(req, res, next, error) {
+	app.use(function(req, res, next) {
 		if (req.get("x-api-key") !== undefined) {
 			return next(); // skip session creation if an api key was provided
 		}
-
-		sessionMiddleware(req, res, next, error);
+		sessionMiddleware(req, res, next);
 	});
 	app.use(function(req, res, next) {
 		apiKeyAuth.expressMiddleware(req, res, next);
@@ -131,6 +130,7 @@ async function main() {
 	io.use((socket, next) => {
 		const u = url.parse(socket.request.url, true);
 		socket.request.query = u.query;
+
 		next();
 	});
 

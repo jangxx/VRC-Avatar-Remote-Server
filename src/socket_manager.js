@@ -27,6 +27,8 @@ class SocketManager {
 			params: []
 		};
 
+		console.log(`Add socket ${socket.id} for board ${board.id}`);
+
 		socket.join(`board::${board.id}`); // join room for board update notifications
 
 		// put the socket in all the correct rooms

@@ -37,7 +37,7 @@ class ApiKeyAuthentication {
             return next();
         }
 
-        const apiKey = req.headers["x-api-key"];
+        const apiKey = socket.request.headers["x-api-key"];
         this._checkApikey(socket.request, apiKey);
         next();
     }
