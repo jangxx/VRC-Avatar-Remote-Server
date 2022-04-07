@@ -18,6 +18,7 @@ const { VrcAvatarManager } = require("./src/vrc_avatar_manager");
 const { BoardManager, requireBoard } = require("./src/board_manager");
 const { SocketManager } = require("./src/socket_manager");
 const { IconManager } = require("./src/icon_manager");
+const { ApiKeyAuthentication } = require("./src/api_key_auth");
 const { requireLogin, requireLoginSocketIO, requireLoginInternal, requireAdmin } = require("./src/require_login");
 const run = require("./src/express_async_middleware");
 
@@ -31,6 +32,7 @@ const oscManager = new OscManager(config);
 const avatarManager = new VrcAvatarManager(oscManager);
 const iconManager = new IconManager(config);
 const boardManager = new BoardManager(config, iconManager);
+const apiKeyAuth = new ApiKeyAuthentication(config);
 
 const app = express();
 const httpServer = createServer(app);
@@ -70,7 +72,7 @@ async function main() {
 			});
 			
 			if (pw.password != pw.repassword) {
-				console.log("The passwords do not match! Please retry.")
+				console.log("The passwords do not match! Please retry.");
 			} else {
 				const hash = await bcrypt.hash(pw.password, 10);
 				await config.setKey("admin", "password", hash);
@@ -90,7 +92,15 @@ async function main() {
 	});
 
 	app.set('trust proxy', 1);
-	app.use(sessionMiddleware);
+	app.use(function(req, res, next) {
+		if (req.get("x-api-key") !== undefined) {
+			return next(); // skip session creation if an api key was provided
+		}
+		sessionMiddleware(req, res, next);
+	});
+	app.use(function(req, res, next) {
+		apiKeyAuth.expressMiddleware(req, res, next);
+	});
 	app.use(express.json());
 	app.use("/build", express.static(path.join(__dirname, "client/dist")));
 
@@ -120,13 +130,20 @@ async function main() {
 	io.use((socket, next) => {
 		const u = url.parse(socket.request.url, true);
 		socket.request.query = u.query;
+
 		next();
 	});
 
 	io.use((socket, next) => {
-		sessionMiddleware(socket.request, {}, next);
+		if ("x-api-key" in socket.request.headers) {
+			apiKeyAuth.socketioMiddleware(socket, next);
+		} else {
+			sessionMiddleware(socket.request, {}, next);
+		}
 	});
 
+	// check login or validate api key
+	// also checks if query.target is set
 	io.use((socket, next) => {
 		requireLoginSocketIO(socket.request, next);
 	});
@@ -199,7 +216,7 @@ async function main() {
 			req.session.save();
 			return res.json({ loggedIn: true });
 		} else {
-			return res.json({ loggedIn: requireLoginInternal(req.params.target, req.session) });
+			return res.json({ loggedIn: requireLoginInternal(req.params.target, req) });
 		}
 	}));
 
@@ -217,9 +234,9 @@ async function main() {
 		});
 	});
 
-	boardRouter.get("/controls", function(req, res) {
+	boardRouter.get("/avatars", function(req, res) {
 		return res.json({
-			controls: req.board.serialize().controls,
+			avatars: req.board.serialize().avatars,
 		});
 	});
 
@@ -443,6 +460,7 @@ async function main() {
 	oscManager.init();
 	avatarManager.init();
 	socketManager.init();
+	apiKeyAuth.init();
 
 	if ("TEST_TRIGGER" in process.env) {
 		setTimeout(() => {

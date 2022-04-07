@@ -9,7 +9,7 @@ function requireLogin(paramName) {
 
 		const target = req.params[paramName];
 
-		if (requireLoginInternal(target, req.session)) {
+		if (requireLoginInternal(target, req)) {
 			return next();
 		} else {
 			// const err = new Error();
@@ -30,7 +30,7 @@ function requireLoginSocketIO(req, next) {
 
 	const target = req.query.target;
 
-	if (requireLoginInternal(target, req.session)) {
+	if (requireLoginInternal(target, req)) {
 		return next();
 	} else {
 		const err = new Error();
@@ -39,7 +39,17 @@ function requireLoginSocketIO(req, next) {
 	}
 }
 
-function requireLoginInternal(target, session) {
+function requireLoginInternal(target, req) {
+	if (req.apiKeyAuthenticated) {
+		return true;
+	}
+
+	if (!("session" in req)) {
+		return false;
+	}
+
+	const session = req.session;
+
 	if (!("logins" in session)) {
 		return false;
 	}
@@ -62,7 +72,7 @@ function requireLoginInternal(target, session) {
 }
 
 function requireAdmin(req, res, next) {
-	if (requireLoginInternal("admin", req.session)) {
+	if (requireLoginInternal("admin", req)) {
 		return next();
 	} else {
 		return res.sendStatus(403);

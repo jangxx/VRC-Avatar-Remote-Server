@@ -1,5 +1,6 @@
-const { VrcAvatarManager } = require("./vrc_avatar_manager");
 const { Server } = require("socket.io");
+
+const { VrcAvatarManager } = require("./vrc_avatar_manager");
 const { BoardManager } = require("./board_manager");
 
 class SocketManager {
@@ -18,13 +19,17 @@ class SocketManager {
 	}
 
 	_addSocket(socket) {
-		const board = this._boardManager.getBoard(socket.data.boardId)
+		const board = this._boardManager.getBoard(socket.data.boardId);
 
 		this._sockets[socket.id] = {
 			socket,
 			board,
 			params: []
 		};
+
+		console.log(`Add socket ${socket.id} for board ${board.id}`);
+
+		socket.join(`board::${board.id}`); // join room for board update notifications
 
 		// put the socket in all the correct rooms
 		for (let p of board.getAllParametersOfAllAvatars()) {
@@ -117,6 +122,10 @@ class SocketManager {
 				this._removeSocket(socket);
 			});
 		});
+	}
+
+	boardUpdate(board_id) {
+		this._io.to(`board::${board_id}`).emit("board-update");
 	}
 }
 

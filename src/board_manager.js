@@ -1,3 +1,5 @@
+const { EventEmitter } = require("events");
+
 const { v4: uuiv4 } = require("uuid");
 const bcrypt = require("bcrypt");
 
@@ -5,7 +7,7 @@ const { Config } = require("./config");
 const { IconManager } = require("./icon_manager");
 const {BackendAvatarParamControl: AvatarParamControl } = require("./backend_avatar_param_control");
 
-class Board {
+class Board extends EventEmitter {
 	/**
 	 * 
 	 * @param {string} id 
@@ -13,6 +15,8 @@ class Board {
 	 * @param {IconManager} iconManager
 	 */
 	constructor(id, config, iconManager) {
+		super();
+
 		this._id = id;
 		this._config = config;
 		this._iconManager = iconManager;
@@ -48,6 +52,7 @@ class Board {
 
 	async _store() {
 		await this._config.setKey("boards", this.id, this.serialize());
+		this.emit("store-config");
 	}
 
 	_load(verifyMode) {
@@ -261,6 +266,13 @@ class BoardManager {
 	constructor(config, iconManager) {
 		this._config = config;
 		this._iconManager = iconManager;
+		this._socketManager = null; // has to be registered by the socketmanager to avoid the circular dependency
+	}
+
+	_handleBoardUpdate(board_id) {
+		if (this._socketManager !== null) {
+			this._socketManager.boardUpdate(board_id);
+		}
 	}
 
 	boardExists(id) {
@@ -281,6 +293,11 @@ class BoardManager {
 
 		const board = new Board(id, this._config, this._iconManager);
 		board._load(verifyMode);
+
+		board.on("store-config", () => {
+			this._handleBoardUpdate(board.id);
+		});
+
 		return board;
 	}
 
@@ -309,6 +326,10 @@ class BoardManager {
 			await this.getBoard(boardId).removeMissingIcons();
 		}
 	}
+
+	registerSocketManager(socketManager) {
+		this._socketManager = socketManager;
+	}
 }
 
 function requireBoard(paramName, boardManager) {
@@ -328,7 +349,7 @@ function requireBoard(paramName, boardManager) {
 
 		req.board = boardManager.getBoard(req.params[paramName]);
 		return next();
-	}
+	};
 }
 
 module.exports = { BoardManager, Board, requireBoard };
