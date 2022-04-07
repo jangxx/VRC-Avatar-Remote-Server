@@ -56,7 +56,7 @@ class Board {
 				controls: Object.fromEntries(
 					Object.entries(avi_def.controls).map(c => {
 						if (verifyMode) {
-							console.log(`Validating avatar parameter ${c[0]}`);
+							console.log(`Validating avatar control ${c[0]}`);
 						}
 						
 						return [
@@ -110,13 +110,13 @@ class Board {
 		return avid in this._avatars;
 	}
 
-	hasParameter(avid, id) {
+	hasControl(avid, id) {
 		return this.hasAvatar(avid) && id in this._avatars[avid].controls;
 	}
 
-	getParameter(avid, id) {
-		if (!this.hasParameter(avid, id)) {
-			throw new Error("This parameter was not found on this board for this avatar");
+	getControl(avid, id) {
+		if (!this.hasControl(avid, id)) {
+			throw new Error("This control was not found on this board for this avatar");
 		}
 
 		return this._avatars[avid].controls[id].clone();
@@ -185,13 +185,13 @@ class Board {
 		}
 	}
 
-	constructParameter(avid, id, name, dataType, controlType, setValue, defaultValue, label=null, icon=null) {
+	constructControl(avid, id, parameterName, dataType, controlType, setValue, defaultValue, label=null, icon=null) {
 		if (!this.hasAvatar(avid)) throw new Error("This avatar is not part of this board");
 
 		// this also performs validation
 		const parameterControl = new AvatarParamControl({
 			id,
-			name,
+			parameterName,
 			dataType,
 			controlType,
 			setValue,
@@ -203,11 +203,11 @@ class Board {
 		return parameterControl;
 	}
 
-	async createParameter(avid, name, dataType, controlType, setValue, defaultValue, label=null, icon=null) {
-		const parameterControl = this.constructParameter(
+	async createControl(avid, parameterName, dataType, controlType, setValue, defaultValue, label=null, icon=null) {
+		const parameterControl = this.constructControl(
 			avid,
 			uuiv4(), // new random id 
-			name, 
+			parameterName, 
 			dataType, 
 			controlType, 
 			setValue, 
@@ -222,9 +222,9 @@ class Board {
 		return parameterControl;
 	}
 
-	async removeParameter(avid, id) {
-		if (!this.hasParameter(avid, id)) {
-			throw new Error("This parameter was not found on this board for this avatar");
+	async removeControl(avid, id) {
+		if (!this.hasControl(avid, id)) {
+			throw new Error("This control was not found on this board for this avatar");
 		}
 
 		delete this._avatars[avid].controls[id];
@@ -232,9 +232,9 @@ class Board {
 		await this._store();
 	}
 
-	async updateParameter(avid, parameterControl) {
-		if (!this.hasParameter(avid, parameterControl.id)) {
-			throw new Error("This parameter was not found on this board for this avatar");
+	async updateControl(avid, parameterControl) {
+		if (!this.hasControl(avid, parameterControl.id)) {
+			throw new Error("This control was not found on this board for this avatar");
 		}
 
 		this._avatars[avid].controls[parameterControl.id] = parameterControl;

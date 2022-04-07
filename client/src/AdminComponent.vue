@@ -87,7 +87,7 @@
 
 			<n-card>
 				<n-space vertical size="large">
-					<n-text>Drop an avatar OSC JSON file to add it to the board or to update its parameters. You can find these JSON files in a subdirectory of this path (click to select and copy-paste into Windows Explorer):</n-text>
+					<n-text>Drop an avatar OSC JSON file to add it to the board or to update its controls. You can find these JSON files in a subdirectory of this path (click to select and copy-paste into Windows Explorer):</n-text>
 
 					<n-input readonly size="small" value="%HOMEPATH%\AppData\LocalLow\VRChat\VRChat\OSC" ref="oscPathInput" @click="$refs.oscPathInput.select()"></n-input>
 					
@@ -356,7 +356,10 @@ export default {
 				parameters: this.droppedAvatar.data.parameters.filter(param => "input" in param).map(param => {
 					return {
 						name: param.name,
-						type: param.input.type,
+						inputAddress: param.input.address,
+						inputType: param.input.type,
+						outputAddress: param.output.address,
+						outputType: param.output.type,
 					};
 				}),
 			};
@@ -466,19 +469,20 @@ export default {
 			})
 		},
 		addParameterControl() {
-			axios.post(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/create-parameter`, {
-				parameter: {
+			axios.post(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/create-control`, {
+				control: {
 					name: this.newControlSelectedParameter.name,
-					dataType: this.newControlSelectedParameter.type.toLowerCase(),
+					dataType: this.newControlSelectedParameter.inputType.toLowerCase(),
 					controlType: this.currentParameterControl.controlType,
 					setValue: this.currentParameterControl.setValue,
 					defaultValue: this.currentParameterControl.defaultValue,
 					label: this.currentParameterControl.label,
-				}
+				},
+				parameter: this.newControlSelectedParameter,
 			}).then(resp => {
 				return this.updateBoards();
 			}).catch(err => {
-				window.$message.error("Error while adding parameter:");
+				window.$message.error("Error while adding control:");
 			});
 		},
 		renameBoard() {
@@ -501,10 +505,10 @@ export default {
 			console.log(Object.assign({}, control));
 
 			this.controlsUpdateLoading.add(control.id);
-			axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/p/${control.id}`, { parameter: control }).then(resp => {
+			axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/p/${control.id}`, { control }).then(resp => {
 				return this.updateBoards();
 			}).catch(err => {
-				window.$message.error("Error while updating parameter");
+				window.$message.error("Error while updating control");
 			}).finally(() => {
 				this.controlsUpdateLoading.delete(control.id);
 			});
@@ -513,7 +517,7 @@ export default {
 			axios.delete(`/api/admin/${this.currentBoard}/a/${this.currentAvatar}/p/${control_id}`).then(resp => {
 				return this.updateBoards();
 			}).catch(err => {
-				window.$message.error("Error while deleting parameter");
+				window.$message.error("Error while deleting control");
 			});
 		},
 		deleteIcon(icon_id) {

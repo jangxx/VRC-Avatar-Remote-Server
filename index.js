@@ -233,7 +233,7 @@ async function main() {
 		if (req.board.hasAvatar(currentAvatar)) {
 			return res.json({
 				id: currentAvatar,
-				parameters: avatarManager.getCurrentParams(),
+				controls: avatarManager.getCurrentParams(),
 			});
 		} else {
 			return res.json({ id: null });
@@ -366,25 +366,25 @@ async function main() {
 		return res.end();
 	}));
 
-	adminRouter.post("/b/:board/a/:avatarId/create-parameter", requireBoard("board", boardManager), run(async function(req, res) {
-		if (!("parameter" in req.body)) {
+	adminRouter.post("/b/:board/a/:avatarId/create-control", requireBoard("board", boardManager), run(async function(req, res) {
+		if (!("control" in req.body)) {
 			return res.sendStatus(400);
 		}
 
-		if (!("name" in req.body.parameter)) {
+		if (!("name" in req.body.control)) {
 			return res.sendStatus(400);
 		}
 
-		let parameter;
+		let control;
 		try {
-			parameter = await req.board.createParameter(
+			control = await req.board.createControl(
 				req.params.avatarId,
-				req.body.parameter.name,
-				req.body.parameter.dataType,
-				req.body.parameter.controlType,
-				req.body.parameter.setValue,
-				req.body.parameter.defaultValue,
-				req.body.parameter.label
+				req.body.control.name,
+				req.body.control.dataType,
+				req.body.control.controlType,
+				req.body.control.setValue,
+				req.body.control.defaultValue,
+				req.body.control.label
 			);
 		} catch(err) {
 			err.statusCode = 400;
@@ -392,13 +392,13 @@ async function main() {
 		}
 
 		return res.json({
-			parameter: parameter.serialize(),
+			control: control.serialize(),
 		});
 	}));
 
-	adminRouter.delete("/b/:board/a/:avatarId/p/:parameterId", requireBoard("board", boardManager), run(async function(req, res) {
+	adminRouter.delete("/b/:board/a/:avatarId/p/:controlId", requireBoard("board", boardManager), run(async function(req, res) {
 		try {
-			await req.board.removeParameter(req.params.avatarId, req.params.parameterId);
+			await req.board.removeControl(req.params.avatarId, req.params.controlId);
 		} catch(err) {
 			err.statusCode = 400;
 			throw err;
@@ -407,28 +407,28 @@ async function main() {
 		return res.end();
 	}));
 
-	adminRouter.put("/b/:board/a/:avatarId/p/:parameterId", requireBoard("board", boardManager), run(async function(req, res) {
-		let parameter;
+	adminRouter.put("/b/:board/a/:avatarId/p/:controlId", requireBoard("board", boardManager), run(async function(req, res) {
+		let control;
 		try {
-			parameter = req.board.constructParameter(
+			control = req.board.constructControl(
 				req.params.avatarId,
-				req.params.parameterId,
-				req.body.parameter.name,
-				req.body.parameter.dataType,
-				req.body.parameter.controlType,
-				req.body.parameter.setValue,
-				req.body.parameter.defaultValue,
-				req.body.parameter.label,
-				req.body.parameter.icon,
+				req.params.controlId,
+				req.body.control.name,
+				req.body.control.dataType,
+				req.body.control.controlType,
+				req.body.control.setValue,
+				req.body.control.defaultValue,
+				req.body.control.label,
+				req.body.control.icon,
 			);
 
-			await req.board.updateParameter(req.params.avatarId, parameter);
+			await req.board.updateControl(req.params.avatarId, control);
 		} catch(err) {
 			err.statusCode = 400;
 			throw err;
 		}
 
-		return res.json({ parameter: parameter.serialize() });
+		return res.json({ control: control.serialize() });
 	}));
 
 	app.use("/api/admin", adminRouter);

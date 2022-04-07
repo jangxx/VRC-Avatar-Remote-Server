@@ -2,6 +2,8 @@ const fs = require("fs-extra");
 const yaml = require("yaml");
 const randomstring = require("randomstring");
 
+const { AsyncLock } = require("./async_lock");
+
 const DEFAULT_CONFIG = {
 	server: {
 		address: "0.0.0.0",
@@ -26,13 +28,15 @@ const DEFAULT_CONFIG = {
 	admin: {
 		password: null,
 	},
-	boards: {}
+	boards: {},
+	avatars: {},
 };
 
 class Config {
 	constructor(config_file_path) {
 		this._path = config_file_path;
 
+		this._lock = new AsyncLock();
 		this._config = null;
 	}
 
@@ -42,12 +46,12 @@ class Config {
 			this._config = yaml.parse(config_file_content);
 		} else {
 			this._config = DEFAULT_CONFIG;
-			await fs.writeFileSync(this._path, yaml.stringify(this._config));
+			await fs.writeFile(this._path, yaml.stringify(this._config));
 		}
 	}
 
 	async _storeConfig() {
-		await fs.writeFileSync(this._path, yaml.stringify(this._config));
+		await fs.writeFile(this._path, yaml.stringify(this._config));
 	}
 
 	getKey(...path) {
@@ -104,6 +108,8 @@ class Config {
 	async setKey(...params) {
 		if (this._config === null) throw new Error("Config is not initialized yet");
 
+		await this._lock.acquire();
+
 		const path = params.slice(0, -1);
 		const value = params[params.length - 1];
 
@@ -118,10 +124,13 @@ class Config {
 		cur[path[path.length - 1]] = value;
 
 		await this._storeConfig();
+		this._lock.release();
 	}
 
 	async unsetKey(...path) {
 		if (this._config === null) throw new Error("Config is not initialized yet");
+
+		await this._lock.acquire();
 
 		let cur = this._config;
 		for (let i = 0; i < path.length - 1; i++) {
@@ -135,6 +144,7 @@ class Config {
 		delete cur[path[path.length - 1]];
 
 		await this._storeConfig();
+		this._lock.release();
 	}
 }
 

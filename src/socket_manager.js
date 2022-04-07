@@ -38,15 +38,15 @@ class SocketManager {
 				return callback({ success: false, error: "Invalid data" });
 			}
 
-			if (!board.hasParameter(msg.avatar, msg.controlId)) {
-				return callback({ success: false, error: "Parameter doesn't exist" });
+			if (!board.hasControl(msg.avatar, msg.controlId)) {
+				return callback({ success: false, error: "Control doesn't exist" });
 			}
 
 			if (msg.avatar != this._avatarManager.getCurrentAvatarId()) {
 				return callback({ success: false, error: "This avatar is not currently active" });
 			}
 
-			const paramController = board.getParameter(msg.avatar, msg.controlId);
+			const paramController = board.getControl(msg.avatar, msg.controlId);
 			paramController.setValue(this._avatarManager, msg.value).then(() => {
 				callback({ success: true });
 			}, err => {
@@ -60,11 +60,11 @@ class SocketManager {
 				return callback({ success: false, error: "Invalid data" });
 			}
 
-			if (!board.hasParameter(msg.avatar, msg.controlId)) {
+			if (!board.hasControl(msg.avatar, msg.controlId)) {
 				return callback({ success: false, error: "Parameter doesn't exist" });
 			}
 
-			const paramController = board.getParameter(msg.avatar, msg.controlId);
+			const paramController = board.getControl(msg.avatar, msg.controlId);
 			paramController.performAction(this._avatarManager).then(() => {
 				callback({ success: true });
 			}, err => {
