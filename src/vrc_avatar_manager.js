@@ -3,6 +3,7 @@ const { EventEmitter} = require("events");
 const { TimedBuffer } = require("./timed_buffer");
 const { OscManager } = require("./osc_manager");
 const { Config } = require("./config");
+const { sha1 } = require("./utils");
 
 class VrcAvatarManager extends EventEmitter {
 	/**
@@ -24,6 +25,8 @@ class VrcAvatarManager extends EventEmitter {
 		};
 
 		this._avatars = {};
+
+		this._avatarIdHashCache = {};
 	}
 
 	_processParameterUpdate(inputAddress, value) {
@@ -138,6 +141,16 @@ class VrcAvatarManager extends EventEmitter {
 
 	forceSetParameter(paramName, value, type) {
 		this._processParameterUpdate(paramName, value, type);
+	}
+
+	hashAvatarId(avid) {
+		const avid_h = sha1(avid);
+		this._avatarIdHashCache[avid_h] = avid;
+		return avid_h;
+	}
+
+	unhashAvatarId(avid_h) {
+		return this._avatarIdHashCache[avid_h];
 	}
 }
 

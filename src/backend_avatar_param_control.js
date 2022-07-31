@@ -49,7 +49,7 @@ class BackendAvatarParamControl extends AvatarParamControl {
 			await awaitableTimeout(1000);
 
 			this._currentlyActive = false;
-			await avatarManager.setParameter(this.parameterName, currentVal);
+			await avatarManager.setParameter(this.parameterName, currentVal, this.types.data);
 		} else if (this._controlType == "toggle") {
 			if (avatarManager.getParameter(this.parameterName) === null) {
 				// if the value is unknown try to set the sert value and then pretend like the value is definitely set

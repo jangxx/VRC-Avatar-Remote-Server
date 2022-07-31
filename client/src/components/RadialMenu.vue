@@ -22,6 +22,7 @@ export default {
 			canvasWidth: 100,
             canvasHeight: 100,
 			mouseDown: false,
+			prevMousePos: { x: null, y: null },
 			inputValue: (this.modelValue !== undefined) ? this.modelValue : 0,
 		}
 	},
@@ -90,7 +91,9 @@ export default {
 		handleMousedown(evt) {
 			window.addEventListener("mouseup", this.handleMouseup);
 			this.mouseDown = true;
-			
+			this.prevMousePos.x = null;
+			this.prevMousePos.y = null;
+
 			this.handleMouse(evt.offsetX, evt.offsetY, true);
 		},
 		handleMousemove(evt) {
@@ -113,13 +116,16 @@ export default {
 
 			const newValue = angle / (Math.PI * 2);
 
-			if (prevValue > 0.5 && newValue < 0.5 && !allowSkip) {
+			if (prevValue > 0.5 && newValue < 0.5 && posY > height/2 && !allowSkip) {
 				this.inputValue = 1;
-			} else if (prevValue < 0.5 && newValue > 0.5 && !allowSkip) {
+			} else if (prevValue < 0.5 && newValue > 0.5 && posY > height/2 && !allowSkip) {
 				this.inputValue = 0;
 			} else {
 				this.inputValue = newValue;
 			}
+
+			this.prevMousePos.x = posX;
+			this.prevMousePos.y = posY;
 
 			this.$emit("update:modelValue", this.inputValue);
 			this.render();

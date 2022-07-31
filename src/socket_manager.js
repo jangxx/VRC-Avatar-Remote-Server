@@ -1,5 +1,6 @@
 const { Server } = require("socket.io");
 
+const { sha1 } = require("./utils");
 const { VrcAvatarManager } = require("./vrc_avatar_manager");
 const { BoardManager } = require("./board_manager");
 
@@ -43,15 +44,20 @@ class SocketManager {
 				return callback({ success: false, error: "Invalid data" });
 			}
 
-			if (!board.hasControl(msg.avatar, msg.controlId)) {
+			const avatar = this._boardManager.resolveHashedAvatarId(msg.avatar);
+			if (avatar == null) {
+				return callback({ success: false, error: "Unknown avatar id" });
+			}
+
+			if (!board.hasControl(avatar, msg.controlId)) {
 				return callback({ success: false, error: "Control doesn't exist" });
 			}
 
-			if (msg.avatar != this._avatarManager.getCurrentAvatarId()) {
+			if (avatar != this._avatarManager.getCurrentAvatarId()) {
 				return callback({ success: false, error: "This avatar is not currently active" });
 			}
 
-			const paramController = board.getControl(msg.avatar, msg.controlId);
+			const paramController = board.getControl(avatar, msg.controlId);
 			paramController.setValue(this._avatarManager, msg.value).then(() => {
 				callback({ success: true });
 			}, err => {
@@ -65,11 +71,16 @@ class SocketManager {
 				return callback({ success: false, error: "Invalid data" });
 			}
 
-			if (!board.hasControl(msg.avatar, msg.controlId)) {
+			const avatar = this._boardManager.resolveHashedAvatarId(msg.avatar);
+			if (avatar == null) {
+				return callback({ success: false, error: "Unknown avatar id" });
+			}
+
+			if (!board.hasControl(avatar, msg.controlId)) {
 				return callback({ success: false, error: "Parameter doesn't exist" });
 			}
 
-			const paramController = board.getControl(msg.avatar, msg.controlId);
+			const paramController = board.getControl(avatar, msg.controlId);
 			paramController.performAction(this._avatarManager).then(() => {
 				callback({ success: true });
 			}, err => {
@@ -80,7 +91,7 @@ class SocketManager {
 		// emit an initial avatar event if neccessary
 		const currentAvatar = this._avatarManager.getCurrentAvatarId();
 		if (board.hasAvatar(currentAvatar)) {
-			socket.emit("avatar", { id: currentAvatar });
+			socket.emit("avatar", { id: this._avatarManager.hashAvatarId(currentAvatar) });
 
 			for (let p of board.getParametersForAvatar(currentAvatar)) {
 				socket.emit("parameter", {
@@ -101,6 +112,7 @@ class SocketManager {
 		this._avatarManager.on("parameter", evt => {
 			const key = `parameter::${evt.avatar}::${evt.name}`;
 			
+			evt.avatar = this._avatarManager.hashAvatarId(evt.avatar);
 			this._io.to(key).emit("parameter", evt);
 		});
 
@@ -108,6 +120,7 @@ class SocketManager {
 		this._avatarManager.on("avatar", evt => {
 			for (let socketId in this._sockets) {
 				if (this._sockets[socketId].board.hasAvatar(evt.id)) {
+					evt.id = this._avatarManager.hashAvatarId(evt.id);
 					this._sockets[socketId].socket.emit("avatar", evt);
 				} else {
 					this._sockets[socketId].socket.emit("avatar", null); // tell this socket that we are now in an unknown avatar

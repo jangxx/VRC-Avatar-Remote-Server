@@ -3,10 +3,11 @@ const { EventEmitter } = require("events");
 const { v4: uuiv4 } = require("uuid");
 const bcrypt = require("bcrypt");
 
+const { sha1 } = require("./utils");
 const { Config } = require("./config");
 const { IconManager } = require("./icon_manager");
 const { VrcAvatarManager } = require("./vrc_avatar_manager");
-const {BackendAvatarParamControl: AvatarParamControl } = require("./backend_avatar_param_control");
+const { BackendAvatarParamControl: AvatarParamControl } = require("./backend_avatar_param_control");
 
 class Board extends EventEmitter {
 	/**
@@ -48,7 +49,7 @@ class Board extends EventEmitter {
 			password: (!external) ? this._password : (this._password !== null),
 			name: this._name,
 			avatars: Object.fromEntries(
-				Object.entries(this._avatars).map(elem => [elem[0], serializeAvatar(elem[1])] )
+				Object.entries(this._avatars).map(elem => [(!external) ? elem[0] : this._avatarManager.hashAvatarId(elem[0]), serializeAvatar(elem[1])] )
 			),
 		};
 	}
@@ -320,6 +321,12 @@ class BoardManager {
 
 		await this._config.unsetKey("boards", id);
 	}
+
+	resolveHashedAvatarId(avid_h) {
+		const avid = this._avatarManager.unhashAvatarId(avid_h);
+		return (avid) ? avid : null;
+	}
+
 
 	getAllBoardIds() {
 		return Object.keys(this._config.getKey("boards"));
