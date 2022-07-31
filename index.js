@@ -6,6 +6,7 @@ const express = require("express");
 const expressSession = require("express-session");
 const MemoryStore = require("memorystore")(expressSession);
 const fileUpload = require("express-fileupload");
+const validateInput = require("express-ajv-middleware").validateRoute;
 const { Server } = require("socket.io");
 const bcrypt = require("bcrypt");
 const prompt = require("prompt");
@@ -19,6 +20,7 @@ const { BoardManager, requireBoard } = require("./src/board_manager");
 const { SocketManager } = require("./src/socket_manager");
 const { IconManager } = require("./src/icon_manager");
 const { ApiKeyAuthentication } = require("./src/api_key_auth");
+const { Obj } = require("./src/schema_utils");
 const { requireLogin, requireLoginSocketIO, requireLoginInternal, requireAdmin } = require("./src/require_login");
 const run = require("./src/express_async_middleware");
 
@@ -29,9 +31,9 @@ if (process.argv.length < 3) {
 
 const config = new Config(process.argv[2]);
 const oscManager = new OscManager(config);
-const avatarManager = new VrcAvatarManager(oscManager);
+const avatarManager = new VrcAvatarManager(oscManager, config);
 const iconManager = new IconManager(config);
-const boardManager = new BoardManager(config, iconManager);
+const boardManager = new BoardManager(config, avatarManager, iconManager);
 const apiKeyAuth = new ApiKeyAuthentication(config);
 
 const app = express();
@@ -310,6 +312,12 @@ async function main() {
 		res.end();
 	}));
 
+	adminRouter.get("/parameters", function(req, res) {
+		return res.json({
+			parameters: avatarManager.getAllRegisteredParams(),
+		});
+	});
+
 	adminRouter.get("/boards", function(req, res) {
 		return res.json({
 			boards: Object.fromEntries(
@@ -383,35 +391,46 @@ async function main() {
 		return res.end();
 	}));
 
-	adminRouter.post("/b/:board/a/:avatarId/create-control", requireBoard("board", boardManager), run(async function(req, res) {
-		if (!("control" in req.body)) {
-			return res.sendStatus(400);
-		}
+	adminRouter.post("/b/:board/a/:avatarId/create-control", 
+		requireBoard("board", boardManager),
+		validateInput({
+			body: Obj()
+				.prop("control", Obj()
+					.prop("dataType", { type: "string" })
+					.prop("controlType", { type: "string" })
+					.prop("setValue", { type: [ "boolean", "integer", "number", "null" ] })
+					.prop("defaultValue", { type: [ "boolean", "integer", "number", "null" ] })
+					.prop("label", { type: "string" })
+					.build())
+				.prop("parameter", Obj()
+					.prop("inputAddress", { type: "string" })
+					.prop("outputAddress", { type: "string" })
+					.prop("name", { type: "string" })
+					.build())
+				.build()
+		}),
+		run(async function(req, res) {
+			let control;
+			try {
+				control = await req.board.createControl({
+					avid: req.params.avatarId,
+					dataType: req.body.control.dataType,
+					controlType: req.body.control.controlType,
+					setValue: req.body.control.setValue,
+					defaultValue: req.body.control.defaultValue,
+					label: req.body.control.label,
+					parameter: req.body.parameter,
+				});
+			} catch(err) {
+				err.statusCode = 400;
+				throw err;
+			}
 
-		if (!("name" in req.body.control)) {
-			return res.sendStatus(400);
+			return res.json({
+				control: control.serialize(),
+			});
 		}
-
-		let control;
-		try {
-			control = await req.board.createControl(
-				req.params.avatarId,
-				req.body.control.name,
-				req.body.control.dataType,
-				req.body.control.controlType,
-				req.body.control.setValue,
-				req.body.control.defaultValue,
-				req.body.control.label
-			);
-		} catch(err) {
-			err.statusCode = 400;
-			throw err;
-		}
-
-		return res.json({
-			control: control.serialize(),
-		});
-	}));
+	));
 
 	adminRouter.delete("/b/:board/a/:avatarId/p/:controlId", requireBoard("board", boardManager), run(async function(req, res) {
 		try {
@@ -427,17 +446,17 @@ async function main() {
 	adminRouter.put("/b/:board/a/:avatarId/p/:controlId", requireBoard("board", boardManager), run(async function(req, res) {
 		let control;
 		try {
-			control = req.board.constructControl(
-				req.params.avatarId,
-				req.params.controlId,
-				req.body.control.name,
-				req.body.control.dataType,
-				req.body.control.controlType,
-				req.body.control.setValue,
-				req.body.control.defaultValue,
-				req.body.control.label,
-				req.body.control.icon,
-			);
+			control = req.board.constructControl({
+				avid: req.params.avatarId,
+				id: req.params.controlId,
+				parameterName: req.body.control.parameterName,
+				dataType: req.body.control.dataType,
+				controlType: req.body.control.controlType,
+				setValue: req.body.control.setValue,
+				defaultValue: req.body.control.defaultValue,
+				label: req.body.control.label,
+				icon: req.body.control.icon,
+			});
 
 			await req.board.updateControl(req.params.avatarId, control);
 		} catch(err) {

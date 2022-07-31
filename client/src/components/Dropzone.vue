@@ -34,7 +34,7 @@ export default {
 	computed: {
 		selectOptions() {
 			return Object.values(this.foundAvatars).map(avatarData => {
-				console.log(avatarData);
+				// console.log(avatarData);
 				return { label: avatarData.name, value: avatarData.id };
 			});
 		}

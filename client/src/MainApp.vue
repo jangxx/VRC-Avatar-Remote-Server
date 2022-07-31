@@ -39,7 +39,7 @@
                 <div class="title-wrapper"><div class="title">{{ control.label }}</div></div>
                 <RadialMenu
                   style="width: 100%; height: 100%" 
-                  v-model="avatarParameterValues[control.name]" 
+                  v-model="avatarParameterValues[control.parameterName]" 
                   @update:modelValue="v => setParamValue(control, v)"
                 ></RadialMenu>
                 <img v-if="control.icon !== null" :src="'/i/' + control.icon" class="background-icon" />

@@ -51,8 +51,8 @@ export default {
 			const canvas = this.$refs.canvas;
 			const width = canvas.width;
 			const height = canvas.height;
-			const x_margin = width/10;
-			const y_margin = height/10;
+			// const x_margin = width/10;
+			// const y_margin = height/10;
 			const line_width = Math.min(width, height) / 6;
 			const ctx = canvas.getContext("2d");
 			ctx.clearRect(0, 0, width, height);
@@ -91,7 +91,7 @@ export default {
 			window.addEventListener("mouseup", this.handleMouseup);
 			this.mouseDown = true;
 			
-			this.handleMouse(evt.offsetX, evt.offsetY);
+			this.handleMouse(evt.offsetX, evt.offsetY, true);
 		},
 		handleMousemove(evt) {
 			if (!this.mouseDown) return;
@@ -101,15 +101,25 @@ export default {
 		handleMouseup(evt) {
 			this.mouseDown = false;
 		},
-		handleMouse(posX, posY) {
+		handleMouse(posX, posY, allowSkip = false) {
 			const canvas = this.$refs.canvas;
 			const width = canvas.width;
 			const height = canvas.height;
 
+			const prevValue = this.inputValue;
+
 			let angle = -Math.atan2(posX - width/2, posY - height/2);
 			angle = (angle < 0) ? angle + Math.PI * 2 : angle;
 
-			this.inputValue = angle / (Math.PI * 2);
+			const newValue = angle / (Math.PI * 2);
+
+			if (prevValue > 0.5 && newValue < 0.5 && !allowSkip) {
+				this.inputValue = 1;
+			} else if (prevValue < 0.5 && newValue > 0.5 && !allowSkip) {
+				this.inputValue = 0;
+			} else {
+				this.inputValue = newValue;
+			}
 
 			this.$emit("update:modelValue", this.inputValue);
 			this.render();

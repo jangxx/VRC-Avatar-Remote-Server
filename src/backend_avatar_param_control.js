@@ -27,7 +27,7 @@ class BackendAvatarParamControl extends AvatarParamControl {
 
 		if (!this.isValueLegal(value)) throw new Error("This value is illegal for this data type");
 
-		avatarManager.setParameter(this.name, value);
+		avatarManager.setParameter(this.parameterName, value, this.types.data);
 	}
 
 	/**
@@ -40,30 +40,30 @@ class BackendAvatarParamControl extends AvatarParamControl {
 		if (this._controlType === "button") {
 			if (this._currentlyActive) return; // ignore
 
-			let currentVal = avatarManager.getParameter(this.name);
+			let currentVal = avatarManager.getParameter(this.parameterName);
 			currentVal = (currentVal !== null) ? currentVal : this._defaultValue;
 
 			this._currentlyActive = true;
-			await avatarManager.setParameter(this.name, this._setValue);
+			await avatarManager.setParameter(this.parameterName, this._setValue, this.types.data);
 			
 			await awaitableTimeout(1000);
 
 			this._currentlyActive = false;
-			await avatarManager.setParameter(this.name, currentVal);
+			await avatarManager.setParameter(this.parameterName, currentVal);
 		} else if (this._controlType == "toggle") {
-			if (avatarManager.getParameter(this.name) === null) {
+			if (avatarManager.getParameter(this.parameterName) === null) {
 				// if the value is unknown try to set the sert value and then pretend like the value is definitely set
 				// either this will toggle the toggle, or it is already toggled
 				// in both scenarios we land in a consistent state
-				await avatarManager.setParameter(this.name, this._setValue);
-				avatarManager.forceSetParameter(this.name, this._setValue);
+				await avatarManager.setParameter(this.parameterName, this._setValue, this.types.data);
+				avatarManager.forceSetParameter(this.parameterName, this._setValue, this.types.data);
 				return;
 			}
 
 			if (this.isToggled(avatarManager)) {
-				await avatarManager.setParameter(this.name, this._defaultValue);
+				await avatarManager.setParameter(this.parameterName, this._defaultValue, this.types.data);
 			} else {
-				await avatarManager.setParameter(this.name, this._setValue);
+				await avatarManager.setParameter(this.parameterName, this._setValue, this.types.data);
 			}
 		}
 	}
@@ -71,7 +71,7 @@ class BackendAvatarParamControl extends AvatarParamControl {
 	isToggled(avatarManager) {
 		if (this._controlType !== "toggle") throw new Error("This method is not allowed for this control type");
 
-		const currentVal = avatarManager.getParameter(this.name);
+		const currentVal = avatarManager.getParameter(this.parameterName);
 		// console.log(this._label, this._name, currentVal);
 		return currentVal !== null && currentVal === this._setValue;
 	}

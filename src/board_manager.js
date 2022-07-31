@@ -5,6 +5,7 @@ const bcrypt = require("bcrypt");
 
 const { Config } = require("./config");
 const { IconManager } = require("./icon_manager");
+const { VrcAvatarManager } = require("./vrc_avatar_manager");
 const {BackendAvatarParamControl: AvatarParamControl } = require("./backend_avatar_param_control");
 
 class Board extends EventEmitter {
@@ -12,13 +13,15 @@ class Board extends EventEmitter {
 	 * 
 	 * @param {string} id 
 	 * @param {Config} config 
+	 * @param {VrcAvatarManager} avatarManager
 	 * @param {IconManager} iconManager
 	 */
-	constructor(id, config, iconManager) {
+	constructor(id, config, avatarManager, iconManager) {
 		super();
 
 		this._id = id;
 		this._config = config;
+		this._avatarManager = avatarManager;
 		this._iconManager = iconManager;
 
 		this._password = null;
@@ -130,7 +133,7 @@ class Board extends EventEmitter {
 	getParametersForAvatar(avid) {
 		const avParams = new Set();
 		for (let controlId in this._avatars[avid].controls) {
-			avParams.add(this._avatars[avid].controls[controlId].name);
+			avParams.add(this._avatars[avid].controls[controlId].parameterName);
 		}
 
 		return [...avParams].map(parameter => {
@@ -143,7 +146,7 @@ class Board extends EventEmitter {
 		for (let avid in this._avatars) {
 			const avParams = new Set();
 			for (let controlId in this._avatars[avid].controls) {
-				avParams.add(this._avatars[avid].controls[controlId].name);
+				avParams.add(this._avatars[avid].controls[controlId].parameterName);
 			}
 
 			result = result.concat([...avParams].map(parameter => {
@@ -190,7 +193,7 @@ class Board extends EventEmitter {
 		}
 	}
 
-	constructControl(avid, id, parameterName, dataType, controlType, setValue, defaultValue, label=null, icon=null) {
+	constructControl({ avid, id, parameterName, dataType, controlType, setValue, defaultValue, label=null, icon=null }) {
 		if (!this.hasAvatar(avid)) throw new Error("This avatar is not part of this board");
 
 		// this also performs validation
@@ -208,17 +211,25 @@ class Board extends EventEmitter {
 		return parameterControl;
 	}
 
-	async createControl(avid, parameterName, dataType, controlType, setValue, defaultValue, label=null, icon=null) {
-		const parameterControl = this.constructControl(
+	async createControl({ avid, dataType, controlType, setValue, defaultValue, parameter, label=null, icon=null }) {
+		await this._avatarManager.registerNewParameter({
 			avid,
-			uuiv4(), // new random id 
-			parameterName, 
+			paramName: parameter.name,
+			inputAddress: parameter.inputAddress,
+			outputAddress: parameter.outputAddress,
+		});
+
+		const parameterControl = this.constructControl({
+			avid,
+			id: uuiv4(), // new random id 
+			parameterName: parameter.name, 
 			dataType, 
 			controlType, 
 			setValue, 
 			defaultValue,
 			label,
-			icon);
+			icon
+		});
 
 		this._avatars[avid].controls[parameterControl.id] = parameterControl;
 
@@ -263,9 +274,10 @@ class BoardManager {
 	 * @param {Config} config
 	 * @param {IconManager} iconManager
 	 */
-	constructor(config, iconManager) {
+	constructor(config, avatarManager, iconManager) {
 		this._config = config;
 		this._iconManager = iconManager;
+		this._avatarManager = avatarManager;
 		this._socketManager = null; // has to be registered by the socketmanager to avoid the circular dependency
 	}
 
@@ -281,7 +293,7 @@ class BoardManager {
 
 	async createBoard() {
 		const id = uuiv4();
-		const board = new Board(id, this._config);
+		const board = new Board(id, this._config, this._avatarManager, this._iconManager);
 		await board._store();
 		return board;
 	}
@@ -291,7 +303,7 @@ class BoardManager {
 			throw new Error("This board doesn't exist");
 		}
 
-		const board = new Board(id, this._config, this._iconManager);
+		const board = new Board(id, this._config, this._avatarManager, this._iconManager);
 		board._load(verifyMode);
 
 		board.on("store-config", () => {

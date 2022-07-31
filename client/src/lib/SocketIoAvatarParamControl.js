@@ -50,9 +50,9 @@ class SocketIoAvatarParamControl extends AvatarParamControl {
 	}
 
 	isToggled(parameterValues) {
-		if (!(this.name in parameterValues)) return false;
+		if (!(this.parameterName in parameterValues)) return false;
 
-		return parameterValues[this.name] == this._setValue;
+		return parameterValues[this.parameterName] == this._setValue;
 	}
 }
 

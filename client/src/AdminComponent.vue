@@ -190,7 +190,7 @@
 				<n-space v-if="currentAvatarData !== null" vertical size="large">
 					<n-card v-for="control in currentAvatarData.controls" :key="control.id">
 						<n-form>
-							<n-grid :cols="4" x-gap="12">
+							<n-grid :cols="6" x-gap="12">
 								<n-gi>
 									<n-space :vertical="true" align="stretch">
 										<n-space v-if="control.icon !== null" justify="center">
@@ -212,8 +212,8 @@
 									</n-space>
 								</n-gi>
 
-								<n-gi :span="3">
-									<n-grid x-gap="12" :cols="3">
+								<n-gi :span="5">
+									<n-grid x-gap="12" :cols="8">
 										<n-gi>
 											<n-form-item label="Control type">
 												<n-input size="small" round :value="control.controlType" readonly disabled />
@@ -224,24 +224,34 @@
 												<n-input size="small" round :value="control.dataType" readonly disabled />
 											</n-form-item>
 										</n-gi>
-										<n-gi>
+										<n-gi span="2">
 											<n-form-item label="Parameter name">
-												<n-input size="small" round :value="control.name" readonly disabled />
+												<n-input size="small" round :value="control.parameterName" readonly disabled />
 											</n-form-item>
 										</n-gi>
-										<n-gi>
+										<n-gi span="2">
+											<n-form-item label="Input address">
+												<n-input size="small" round :value="currentAvatarParams[control.parameterName].input" readonly disabled />
+											</n-form-item>
+										</n-gi>
+										<n-gi span="2">
+											<n-form-item label="Output address">
+												<n-input size="small" round :value="currentAvatarParams[control.parameterName].output" readonly disabled />
+											</n-form-item>
+										</n-gi>
+										<n-gi span="2">
 											<n-form-item v-if="control.controlType != 'range'" label="Default value">
 												<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.defaultValue" size="small" round />
 												<n-checkbox v-else v-model:checked="control.defaultValue" />
 											</n-form-item>
 										</n-gi>
-										<n-gi>
+										<n-gi span="2">
 											<n-form-item v-if="control.controlType != 'range'" label="Set value">
 												<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.setValue" size="small" round />
 												<n-checkbox v-else v-model:checked="control.setValue" />
 											</n-form-item>
 										</n-gi>
-										<n-gi>
+										<n-gi span="4">
 											<n-form-item label="Label">
 												<n-input size="small" v-model:value="control.label" />
 											</n-form-item>
@@ -251,7 +261,12 @@
 							</n-grid>
 							<n-space justify="end">
 								<n-button type="primary" :loading="controlsUpdateLoading.has(control.id)" @click="updateParameterControl(control)">Save</n-button>
-								<n-button type="error" >Delete</n-button>
+								<n-popconfirm @positive-click="deleteParameterControl(control.id)">
+									<template #trigger>
+										<n-button type="error">Delete</n-button>
+									</template>
+									Are you sure you want to delete this control?
+								</n-popconfirm>
 							</n-space>
 						</n-form>
 					</n-card>
@@ -285,6 +300,7 @@ export default {
 			newBoardName: "",
 			icons: [],
 			boards: null,
+			registeredParams: {},
 			currentBoard: null,
 			currentBoardData: {},
 			currentAvatar: null,
@@ -311,8 +327,23 @@ export default {
 			this.currentParameterControl.setValue = null;
 		},
 		"currentParameterControl.controlType": function() {
-			this.currentParameterControl.defaultValue = null;
 			this.currentParameterControl.setValue = null;
+
+			if (this.newControlSelectedParameter != null) {
+				switch (this.newControlSelectedParameter.type) {
+					case "Bool":
+						this.currentParameterControl.defaultValue = false;
+						break;
+					case "Int":
+						this.currentParameterControl.defaultValue = 0;
+						break;
+					default:
+						this.currentParameterControl.defaultValue = null;
+						break;
+				}
+			} else {
+				this.currentParameterControl.defaultValue = null;
+			}
 		},
 	},
 	computed: {
@@ -354,12 +385,15 @@ export default {
 				name: this.droppedAvatar.data.name,
 				id: this.droppedAvatar.data.id,
 				parameters: this.droppedAvatar.data.parameters.filter(param => "input" in param).map(param => {
+					const supported = param.input.type === param.output.type;
+					const type = supported ? param.input.type : null;
+
 					return {
 						name: param.name,
 						inputAddress: param.input.address,
-						inputType: param.input.type,
 						outputAddress: param.output.address,
-						outputType: param.output.type,
+						supported,
+						type,
 					};
 				}),
 			};
@@ -368,11 +402,15 @@ export default {
 			if (this.processedAvatarData === null) return [];
 
 			return this.processedAvatarData.parameters.map((param, index) => {
-				return { label: `${param.name} (${param.type})`, value: index };
+				if (param.supported) {
+					return { label: `${param.name} (${param.type})`, value: index };
+				} else {
+					return { label: `${param.name} (Not supported)`, value: index, disabled: true };
+				}
 			});
 		},
 		newControlSelectedParameter() {
-			if (this.currentParameterControl.selectedParameter === null) return null;
+			if (this.currentParameterControl.selectedParameter == null) return null;
 
 			return this.processedAvatarData.parameters[this.currentParameterControl.selectedParameter];
 		},
@@ -411,11 +449,20 @@ export default {
 				return { value: icon.id, label: icon.id };
 			}));
 		},
+		currentAvatarParams() {
+			if (!(this.currentAvatar in this.registeredParams)) {
+				return {};
+			} else {
+				return this.registeredParams[this.currentAvatar];
+			}
+		},
 	},
 	methods: {
 		async updateBoards() {
 			const resp = await axios.get("/api/admin/boards");
 			this.boards = resp.data.boards;
+
+			await this.updateRegisteredParams();
 
 			if (this.currentBoard !== null) {
 				this.currentBoardData = Object.assign({ newPassword: "" }, this.boards[this.currentBoard]);
@@ -424,6 +471,10 @@ export default {
 		async updateIcons() {
 			const resp = await axios.get("/api/admin/icons");
 			this.icons = resp.data.icons;
+		},
+		async updateRegisteredParams() {
+			const resp = await axios.get("/api/admin/parameters");
+			this.registeredParams = resp.data.parameters;
 		},
 		changeBoard(boardId) {
 			this.currentBoard = boardId;
@@ -471,8 +522,7 @@ export default {
 		addParameterControl() {
 			axios.post(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/create-control`, {
 				control: {
-					name: this.newControlSelectedParameter.name,
-					dataType: this.newControlSelectedParameter.inputType.toLowerCase(),
+					dataType: this.newControlSelectedParameter.type.toLowerCase(),
 					controlType: this.currentParameterControl.controlType,
 					setValue: this.currentParameterControl.setValue,
 					defaultValue: this.currentParameterControl.defaultValue,
@@ -502,7 +552,7 @@ export default {
 			}).catch(err => {});
 		},
 		updateParameterControl(control) {
-			console.log(Object.assign({}, control));
+			// console.log(Object.assign({}, control));
 
 			this.controlsUpdateLoading.add(control.id);
 			axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/p/${control.id}`, { control }).then(resp => {
@@ -514,7 +564,7 @@ export default {
 			});
 		},
 		deleteParameterControl(control_id) {
-			axios.delete(`/api/admin/${this.currentBoard}/a/${this.currentAvatar}/p/${control_id}`).then(resp => {
+			axios.delete(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/p/${control_id}`).then(resp => {
 				return this.updateBoards();
 			}).catch(err => {
 				window.$message.error("Error while deleting control");

@@ -58,8 +58,7 @@ class VrcAvatarManager extends EventEmitter {
 				}
 
 				this._buffer.getAll().forEach(msg => {
-					const m = msg.address.match(PARAM_RE);
-					this._processParameterUpdate(m[2], msg.value);
+					this._processParameterUpdate(msg.address, msg.value);
 				});
 			} else {
 				this._buffer.add(msg.address, msg, 400);
@@ -97,16 +96,20 @@ class VrcAvatarManager extends EventEmitter {
 		}
 	}
 
-	async setParameter(paramName, value) {
+	getAllRegisteredParams() {
+		return Object.assign({}, this._avatars);
+	}
+
+	async setParameter(paramName, value, type) {
 		const avid = this._currentAvatar.id;
 
 		if (!(avid in this._avatars && paramName in this._avatars[avid])) return;
 
-		await this._osc.sendMessage(this._avatars[avid][paramName].output, value);
+		await this._osc.sendMessage(this._avatars[avid][paramName].output, value, type);
 		// we're not updating the currentAvatar here. it will get updated soon after the game sends the update back to us
 	}
 
-	async registerNewParameter(avid, paramName, inputAddress, outputAddress) {
+	async registerNewParameter({ avid, paramName, inputAddress, outputAddress }) {
 		if (!(avid in this._avatars)) {
 			this._avatars[avid] = {};
 		}
@@ -115,6 +118,10 @@ class VrcAvatarManager extends EventEmitter {
 			input: inputAddress,
 			output: outputAddress,
 		};
+
+		if (avid === this._currentAvatar.id) { // update the input params so that the new control work immediately without an avatar switch
+			this._inputParams = Object.fromEntries(Object.entries(this._avatars[this._currentAvatar.id]).map(e => [ e[1].input, e[0] ]));
+		}
 
 		await this._config.setKey("avatars", this._avatars);
 	}
@@ -129,8 +136,8 @@ class VrcAvatarManager extends EventEmitter {
 		await this._config.setKey("avatars", this._avatars);
 	}
 
-	forceSetParameter(paramName, value) {
-		this._processParameterUpdate(paramName, value);
+	forceSetParameter(paramName, value, type) {
+		this._processParameterUpdate(paramName, value, type);
 	}
 }
 
