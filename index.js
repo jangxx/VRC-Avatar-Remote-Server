@@ -25,7 +25,7 @@ const { requireLogin, requireLoginSocketIO, requireLoginInternal, requireAdmin }
 const run = require("./src/express_async_middleware");
 
 if (process.argv.length < 3) {
-	console.log("Usage: node index.js <config.yml>");
+	console.log("Usage: node index.js <config.yml> [icons_dir]");
 	process.exit(0);
 }
 
@@ -44,7 +44,7 @@ const socketManager = new SocketManager(io, boardManager, avatarManager);
 
 async function main() {
 	await config.init();
-	await iconManager.init();
+	await iconManager.init(process.argv[3]);
 
 	try {
 		boardManager.tryLoadingAllBoards();

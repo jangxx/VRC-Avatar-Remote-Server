@@ -30,8 +30,12 @@ class IconManager {
 		this._icons = {};
 	}
 
-	async init() {
-		this._base_path = this._config.getRequiredKey("icons", "path");
+	async init(base_path) {
+		if (!base_path) {
+			this._base_path = this._config.getRequiredKey("icons", "path");
+		} else {
+			this._base_path = base_path;
+		}
 
 		if (!fs.pathExistsSync(this._base_path)) {
 			await fs.mkdirp(this._base_path);
