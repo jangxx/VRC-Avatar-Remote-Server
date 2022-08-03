@@ -40,7 +40,7 @@
 		<div class="spacer"></div>
 
 		<template v-if="currentBoard !== null">
-			<n-text>You can open this board under this url: <n-a :href="boardUrl" target="_blank">{{ boardUrl }}</n-a></n-text>
+			<n-text>You can open this board under this URL: <n-a :href="boardUrl" target="_blank">{{ boardUrl }}</n-a></n-text>
 
 			<n-divider />
 
@@ -79,6 +79,25 @@
 							<n-space justify="end">
 								<n-button :disabled="currentBoardData.newPassword.length == 0" @click="setBoardPassword(currentBoardData.newPassword)">Set password</n-button>
 								<n-button type="warning" :disabled="!boards[currentBoard].password" @click="setBoardPassword(null)">Disable password</n-button>
+							</n-space>
+						</n-space>
+					</n-card>
+				</n-collapse-item>
+				<n-collapse-item title="Default board">
+					<n-card>
+						<n-space vertical size="large">
+							<n-checkbox :modelValue="defaultBoard === currentBoard" :on-update:checked="v => defaultBoard = (v ? currentBoard : null)">
+								Set this board as the default
+							</n-checkbox>
+
+							<n-text>
+								Setting a board as the default makes it accessible under the root URL, i.e.:
+								<n-a :href="$location.origin + '/'" target="_blank">{{ $location.origin + '/' }}</n-a>,
+								but all other settings (like a configured password) still function the same.
+							</n-text>
+
+							<n-space justify="end">
+								<n-button @click="setDefaultBoard()">Save</n-button>
 							</n-space>
 						</n-space>
 					</n-card>
@@ -300,6 +319,7 @@ export default {
 			newBoardName: "",
 			icons: [],
 			boards: null,
+			defaultBoard: null,
 			registeredParams: {},
 			currentBoard: null,
 			currentBoardData: {},
@@ -347,6 +367,9 @@ export default {
 		},
 	},
 	computed: {
+		$location() {
+			return window.location;
+		},
 		boardSelectOptions() {
 			if (this.boards == null) return [];
 
@@ -461,6 +484,7 @@ export default {
 		async updateBoards() {
 			const resp = await axios.get("/api/admin/boards");
 			this.boards = resp.data.boards;
+			this.defaultBoard = resp.data.defaultBoard;
 
 			await this.updateRegisteredParams();
 
@@ -537,6 +561,11 @@ export default {
 		},
 		renameBoard() {
 			axios.put(`/api/admin/b/${this.currentBoard}/name`, { name: this.currentBoardData.name }).then(resp => {
+				return this.updateBoards();
+			}).catch(err => {});
+		},
+		setDefaultBoard() {
+			axios.put(`/api/admin/b/${this.currentBoard}/default`, { default: this.currentBoard === this.defaultBoard }).then(resp => {
 				return this.updateBoards();
 			}).catch(err => {});
 		},

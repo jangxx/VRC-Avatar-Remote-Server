@@ -29,6 +29,7 @@ const DEFAULT_CONFIG = {
 	admin: {
 		password: null,
 	},
+	defaultBoard: null,
 	boards: {},
 	avatars: {},
 };

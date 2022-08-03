@@ -75,6 +75,10 @@ export default {
   },
   computed: {
     boardId() {
+      if (window.location.pathname === "/") {
+        return "default";
+      }
+
       const m = window.location.pathname.match(/^\/b\/((?:\w|-)+)/);
       if (m == null) return null;
       return m[1];

@@ -289,7 +289,12 @@ class BoardManager {
 	}
 
 	boardExists(id) {
-		return this._config.existsKey("boards", id);
+		if (id === "default") {
+			const defaultId = this.getDefaultBoardId();
+			return defaultId ? this._config.existsKey("boards", defaultId) : false;
+		} else {
+			return this._config.existsKey("boards", id);
+		}
 	}
 
 	async createBoard() {
@@ -299,9 +304,21 @@ class BoardManager {
 		return board;
 	}
 
+	getDefaultBoardId() {
+		return this._config.getKey("defaultBoard");
+	}
+
+	async setDefaultBoardId(board_id) {
+		await this._config.setKey("defaultBoard", board_id);
+	}
+
 	getBoard(id, verifyMode=false) {
 		if (!this.boardExists(id)) {
 			throw new Error("This board doesn't exist");
+		}
+
+		if (id === "default") { // at this point we know it exists so no null check necessary
+			id = this.getDefaultBoardId();
 		}
 
 		const board = new Board(id, this._config, this._avatarManager, this._iconManager);

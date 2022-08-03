@@ -325,7 +325,8 @@ async function main() {
 					boardId,
 					boardManager.getBoard(boardId).serialize(true)
 				])
-			)
+			),
+			defaultBoard: boardManager.getDefaultBoardId(),
 		});
 	});
 
@@ -364,6 +365,37 @@ async function main() {
 
 		try {
 			await req.board.setPassword(req.body.password);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.end();
+	}));
+
+	adminRouter.put("/b/:board/default", requireBoard("board", boardManager), run(async function(req, res) {
+		if (!("default" in req.body)) {
+			return res.sendStatus(400);
+		}
+
+		const currentDefault = boardManager.getDefaultBoardId();
+
+		try {
+			if (req.body.default === true) {
+				await boardManager.setDefaultBoardId(req.board.id);
+			} else if  (req.body.default === false) {
+				if (currentDefault === req.board.id) { // if this is currently the default unset the default
+					await boardManager.setDefaultBoardId(null);
+				} else {
+					// otherwise we can't unset this board as the default
+					err.statusCode = 400;
+					throw err;
+				}
+			} else {
+				// invalid value
+				err.statusCode = 400;
+				throw err;
+			}
 		} catch(err) {
 			err.statusCode = 400;
 			throw err;
