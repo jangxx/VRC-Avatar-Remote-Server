@@ -155,8 +155,8 @@ export default {
         await this.performLogin(this.boardId, presetPw);
       }
 
-      await this.updateBoard();
-      this.setupSocket();
+      // await this.updateBoard();
+      // this.setupSocket();
     } else {
       this.notFound = true;
     }

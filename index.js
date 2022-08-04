@@ -53,6 +53,27 @@ async function main() {
 		process.exit(1);
 	}
 
+	if (config.getRequiredKey("firstTimeSetup")) {
+		prompt.start({ noHandleSIGINT: true });
+		
+		console.log("Running first time setup");
+
+		const result = await prompt.get({
+			properties: {
+				running_in_docker: {
+					description: "Are you running in docker right now? [y/N]",
+					pattern: /^y|n$/,
+				},
+			},
+		});
+
+		if (result.running_in_docker === 'y') {
+			await config.setKey("osc", "output", "address", "host.docker.internal");
+		}
+
+		await config.setKey("firstTimeSetup", false);
+	}
+
 	if (config.getRequiredKey("admin", "password") === null) {
 		prompt.start({ noHandleSIGINT: true });
 		console.log("You need to set an admin password before using this tool. Please enter it now.");
@@ -78,9 +99,12 @@ async function main() {
 			} else {
 				const hash = await bcrypt.hash(pw.password, 10);
 				await config.setKey("admin", "password", hash);
+				console.log("Admin password has been set successfully! You can now start the server again with the config file that was just created.");
 				break;
 			}
 		}
+
+		process.exit(0);
 	}
 
 	const sessionMiddleware = expressSession({
@@ -232,13 +256,13 @@ async function main() {
 
 	boardRouter.get("/full", function(req, res) {
 		return res.json({
-			board: req.board.serialize(true),
+			board: req.board.serialize(true, true),
 		});
 	});
 
 	boardRouter.get("/avatars", function(req, res) {
 		return res.json({
-			avatars: req.board.serialize().avatars,
+			avatars: req.board.serialize(true, true).avatars,
 		});
 	});
 
@@ -334,7 +358,7 @@ async function main() {
 		const board = await boardManager.createBoard();
 
 		return res.json({
-			board: board.serialize(),
+			board: board.serialize(true),
 		});
 	}));
 

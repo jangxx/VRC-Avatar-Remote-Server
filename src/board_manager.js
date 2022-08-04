@@ -34,7 +34,7 @@ class Board extends EventEmitter {
 		return this._id;
 	}
 
-	serialize(external = false) {
+	serialize(external = false, mask_ids = false) {
 		function serializeAvatar(avi_def) {
 			const serialized = {
 				controls: Object.fromEntries(
@@ -49,7 +49,7 @@ class Board extends EventEmitter {
 			password: (!external) ? this._password : (this._password !== null),
 			name: this._name,
 			avatars: Object.fromEntries(
-				Object.entries(this._avatars).map(elem => [(!external) ? elem[0] : this._avatarManager.hashAvatarId(elem[0]), serializeAvatar(elem[1])] )
+				Object.entries(this._avatars).map(elem => [(mask_ids) ? this._avatarManager.hashAvatarId(elem[0]) : elem[0], serializeAvatar(elem[1])] )
 			),
 		};
 	}

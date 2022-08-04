@@ -130,6 +130,6 @@ out
 .yarn/install-state.gz
 .pnp.*
 
-*.yml
-*.yaml
+config*.yml
+config*.yaml
 icons/

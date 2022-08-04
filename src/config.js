@@ -30,6 +30,7 @@ const DEFAULT_CONFIG = {
 		password: null,
 	},
 	defaultBoard: null,
+	firstTimeSetup: true,
 	boards: {},
 	avatars: {},
 };

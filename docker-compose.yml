@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  vrc-param-server:
+    build: .
+    ports:
+      - "9001:9001/udp"
+      - "45000:8080"
+    restart: "unless-stopped"
+    volumes:
+      - "./config:/data/config"
+  cloudflared:
+    image: cloudflare/cloudflared
+    command: tunnel --url http://vrc-param-server:8080
+    restart: "unless-stopped"
