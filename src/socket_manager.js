@@ -23,7 +23,7 @@ class SocketManager {
 		try {
 			board = this._boardManager.getBoard(socket.data.boardId);
 		} catch(err) {
-			console.log(`Adding socket failed for board ${board.id}: `, err);
+			console.log(`Adding socket failed for board ${socket.data.boardId}: `, err);
 			socket.disconnect(true);
 			return;
 		}
