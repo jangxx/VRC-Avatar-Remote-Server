@@ -529,6 +529,25 @@ async function main() {
 		return res.json({ control: control.serialize() });
 	}));
 
+	adminRouter.put("/b/:board/a/:avatarId/control-order",
+		validateInput({
+			body: Obj()
+				.prop("order", { type: "array", items: { type: "string" } })
+				.build()
+		}),
+		requireBoard("board", boardManager),
+		async function(req, res) {
+			try {
+				await req.board.setControlOrder(req.params.avatarId, req.body.order);
+			} catch(err) {
+				err.statusCode = 400;
+				throw err;
+			}
+
+			return res.end();
+		}
+	);
+
 	app.use("/api/admin", adminRouter);
 
 	const port = config.getRequiredKey("server", "port");

@@ -7,6 +7,26 @@ const { IconManager } = require("./icon_manager");
 const { VrcAvatarManager } = require("./vrc_avatar_manager");
 const { BackendAvatarParamControl: AvatarParamControl } = require("./backend_avatar_param_control");
 
+/**
+ * Automatically create and manage the control order to be backwards compatible
+ */
+function fixControlOrder(control_order, all_control_ids) {
+	const ids = new Set(all_control_ids);
+
+	if (control_order) {
+		// remove entries that are in the order but not in the controls (TODO: this could also be a validation error)
+		control_order = control_order.filter(cid => ids.has(cid));
+
+		for (const cid of control_order) {
+			ids.delete(cid);
+		}
+	} else {
+		control_order = [];
+	}
+
+	return [ ...control_order, ...ids ]; // just append the non ordered ids at the end
+}
+
 class Board extends EventEmitter {
 	/**
 	 * 
@@ -39,6 +59,7 @@ class Board extends EventEmitter {
 					Object.entries(avi_def.controls).map(c => [c[0], c[1].serialize()] )
 				),
 				name: avi_def.name,
+				controlOrder: fixControlOrder(avi_def.controlOrder, Object.keys(avi_def.controls)),
 			};
 			return serialized;
 		}
@@ -78,6 +99,7 @@ class Board extends EventEmitter {
 					})
 				),
 				name: avi_def.name,
+				controlOrder: fixControlOrder(avi_def.controlOrder, Object.keys(avi_def.controls)),
 			};
 			return deserialized;
 		}
@@ -245,6 +267,7 @@ class Board extends EventEmitter {
 		});
 
 		this._avatars[avid].controls[parameterControl.id] = parameterControl;
+		this._avatars[avid].controlOrder.push(parameterControl.id);
 
 		await this._store();
 
@@ -257,6 +280,7 @@ class Board extends EventEmitter {
 		}
 
 		delete this._avatars[avid].controls[id];
+		this._avatars[avid].controlOrder = this._avatars[avid].controlOrder.filter(cid => cid !== id);
 
 		await this._store();
 	}
@@ -267,6 +291,23 @@ class Board extends EventEmitter {
 		}
 
 		this._avatars[avid].controls[parameterControl.id] = parameterControl;
+
+		await this._store();
+	}
+
+	async setControlOrder(avid, controlOrder) {
+		// make sure that the ids in controlOrder are all correct
+		for (const cid of controlOrder) {
+			if (!this.hasControl(avid, cid)) {
+				throw new Error("Invalid control id");
+			}
+		}
+
+		if (controlOrder.length !== Object.keys(this._avatars[avid].controls).length) {
+			throw new Error("Order is missing some controls");
+		}
+
+		this._avatars[avid].controlOrder = controlOrder;
 
 		await this._store();
 	}

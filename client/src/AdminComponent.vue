@@ -211,89 +211,112 @@
 					<n-divider />
 				</template>
 
-				<n-space v-if="currentAvatarData !== null" vertical size="large">
-					<n-card v-for="control in currentAvatarData.controls" :key="control.id">
-						<n-form>
-							<n-grid :cols="6" x-gap="12">
-								<n-gi>
-									<n-space :vertical="true" align="stretch">
-										<n-space v-if="control.icon !== null" justify="center">
-											<n-image width="100" height="100" :src="'/i/' + control.icon" :preview-disabled="true" />
+				<draggable
+					v-if="currentAvatarData !== null"
+					:list="currentAvatarControlsSorted"
+					:animation="200"
+					item-key="id"
+					handle=".handle"
+					@start="handleDragStart"
+					@end="handleDragEnd"
+				>
+					<template #item="{element: control}">
+						<n-card :key="control.id" class="control-card">
+							<div class="handle">
+								<n-icon size="20">
+									<icon-grip />
+								</n-icon>
+							</div>
+							<n-form>
+								<n-grid :cols="6" x-gap="12">
+									<n-gi>
+										<n-space :vertical="true" align="stretch">
+											<n-space v-if="control.icon !== null" justify="center">
+												<n-image width="100" height="100" :src="'/i/' + control.icon" :preview-disabled="true" />
+											</n-space>
+											<n-empty v-else description="No icon set" size="medium">
+												<template #icon>
+													<n-icon>
+														<IconImage />
+													</n-icon>
+												</template>
+											</n-empty>
+											<n-select :options="iconSelectOptions" :render-tag="renderIconSelectTag" :render-label="renderIconSelectOption" v-model:value="control.icon" />
+											<!-- <n-button secondary round>
+												<template #icon>
+													<n-icon><IconEdit /></n-icon>
+												</template>
+											</n-button> -->
 										</n-space>
-										<n-empty v-else description="No icon set" size="medium">
-											<template #icon>
-												<n-icon>
-													<IconImage />
-												</n-icon>
-											</template>
-										</n-empty>
-										<n-select :options="iconSelectOptions" :render-tag="renderIconSelectTag" :render-label="renderIconSelectOption" v-model:value="control.icon" />
-										<!-- <n-button secondary round>
-											<template #icon>
-												<n-icon><IconEdit /></n-icon>
-											</template>
-										</n-button> -->
-									</n-space>
-								</n-gi>
+									</n-gi>
 
-								<n-gi :span="5">
-									<n-grid x-gap="12" :cols="8">
-										<n-gi>
-											<n-form-item label="Control type">
-												<n-input size="small" round :value="control.controlType" readonly disabled />
-											</n-form-item>
-										</n-gi>
-										<n-gi>
-											<n-form-item label="Data type">
-												<n-input size="small" round :value="control.dataType" readonly disabled />
-											</n-form-item>
-										</n-gi>
-										<n-gi span="2">
-											<n-form-item label="Parameter name">
-												<n-input size="small" round :value="control.parameterName" readonly disabled />
-											</n-form-item>
-										</n-gi>
-										<n-gi span="2">
-											<n-form-item label="Input address">
-												<n-input size="small" round :value="currentAvatarParams[control.parameterName].input" readonly disabled />
-											</n-form-item>
-										</n-gi>
-										<n-gi span="2">
-											<n-form-item label="Output address">
-												<n-input size="small" round :value="currentAvatarParams[control.parameterName].output" readonly disabled />
-											</n-form-item>
-										</n-gi>
-										<n-gi span="2">
-											<n-form-item v-if="control.controlType != 'range'" label="Default value">
-												<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.defaultValue" size="small" round />
-												<n-checkbox v-else v-model:checked="control.defaultValue" />
-											</n-form-item>
-										</n-gi>
-										<n-gi span="2">
-											<n-form-item v-if="control.controlType != 'range'" label="Set value">
-												<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.setValue" size="small" round />
-												<n-checkbox v-else v-model:checked="control.setValue" />
-											</n-form-item>
-										</n-gi>
-										<n-gi span="4">
-											<n-form-item label="Label">
-												<n-input size="small" v-model:value="control.label" />
-											</n-form-item>
-										</n-gi>
-									</n-grid>
-								</n-gi>
-							</n-grid>
-							<n-space justify="end">
-								<n-button type="primary" :loading="controlsUpdateLoading.has(control.id)" @click="updateParameterControl(control)">Save</n-button>
-								<n-popconfirm @positive-click="deleteParameterControl(control.id)">
-									<template #trigger>
-										<n-button type="error">Delete</n-button>
-									</template>
-									Are you sure you want to delete this control?
-								</n-popconfirm>
-							</n-space>
-						</n-form>
-					</n-card>
+									<n-gi :span="5">
+										<n-grid x-gap="12" :cols="8">
+											<n-gi>
+												<n-form-item label="Control type">
+													<n-input size="small" round :value="control.controlType" readonly disabled />
+												</n-form-item>
+											</n-gi>
+											<n-gi>
+												<n-form-item label="Data type">
+													<n-input size="small" round :value="control.dataType" readonly disabled />
+												</n-form-item>
+											</n-gi>
+											<n-gi span="2">
+												<n-form-item label="Parameter name">
+													<n-input size="small" round :value="control.parameterName" readonly disabled />
+												</n-form-item>
+											</n-gi>
+											<n-gi span="2">
+												<n-form-item label="Input address">
+													<n-input size="small" round :value="currentAvatarParams[control.parameterName].input" readonly disabled />
+												</n-form-item>
+											</n-gi>
+											<n-gi span="2">
+												<n-form-item label="Output address">
+													<n-input size="small" round :value="currentAvatarParams[control.parameterName].output" readonly disabled />
+												</n-form-item>
+											</n-gi>
+											<n-gi span="2">
+												<n-form-item v-if="control.controlType != 'range'" label="Default value">
+													<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.defaultValue" size="small" round />
+													<n-checkbox v-else v-model:checked="control.defaultValue" />
+												</n-form-item>
+											</n-gi>
+											<n-gi span="2">
+												<n-form-item v-if="control.controlType != 'range'" label="Set value">
+													<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.setValue" size="small" round />
+													<n-checkbox v-else v-model:checked="control.setValue" />
+												</n-form-item>
+											</n-gi>
+											<n-gi span="4">
+												<n-form-item label="Label">
+													<n-input size="small" v-model:value="control.label" />
+												</n-form-item>
+											</n-gi>
+										</n-grid>
+									</n-gi>
+								</n-grid>
+								<n-space justify="end">
+									<n-button secondary type="primary" :loading="buttonLoading.has('control-' + control.id)" @click="updateParameterControl(control)">Save</n-button>
+									<n-popconfirm @positive-click="deleteParameterControl(control.id)">
+										<template #trigger>
+											<n-button secondary type="error">Delete</n-button>
+										</template>
+										Are you sure you want to delete this control?
+									</n-popconfirm>
+								</n-space>
+							</n-form>
+						</n-card>
+					</template>
+				</draggable>
+				
+				<n-space v-if="controlOrder !== null">
+					<n-button
+						type="info"
+						:loading="buttonLoading.has('save-order')"
+						@click="saveControlOrder()"
+					>Save control order</n-button>
 				</n-space>
 			</template>
 
@@ -306,14 +329,23 @@
 <script>
 import axios from "axios";
 import { darkTheme, NText, useMessage } from "naive-ui";
-import { Plus, Trash, ExclamationCircle, Image } from "@vicons/fa";
+import { Plus, Trash, ExclamationCircle, Image, GripVertical } from "@vicons/fa";
 import { h } from "vue";
+import draggable from "vuedraggable";
 
 import ImageSelectOption from "./components/ImageSelectOption.vue";
 import Dropzone from "./components/Dropzone.vue";
 
 export default {
-	components: { Dropzone, IconPlus: Plus, IconTrash: Trash, IconExclamationCircle: ExclamationCircle, IconImage: Image },
+	components: {
+		Dropzone,
+		draggable,
+		IconPlus: Plus,
+		IconTrash: Trash,
+		IconExclamationCircle: ExclamationCircle,
+		IconImage: Image,
+		IconGrip: GripVertical,
+	},
 	expose: [ "updateBoards" ],
 	setup() {
 		window.$message = useMessage();
@@ -330,14 +362,15 @@ export default {
 			currentBoardData: {},
 			currentAvatar: null,
 			droppedAvatar: null,
-			controlsUpdateLoading: new Set(),
+			controlOrder: null,
+			buttonLoading: new Set(),
 			currentParameterControl: { // is reset in openAvatarFile
 				label: "",
 				selectedParameter: null,
 				controlType: null,
 				defaultValue: null,
 				setValue: null,
-			}
+			},
 		}
 	},
 	watch: {
@@ -472,6 +505,15 @@ export default {
 
 			return this.currentBoardData.avatars[this.currentAvatar];
 		},
+		currentAvatarControlsSorted() {
+			if (this.currentAvatarData === null) return [];
+
+			const controlOrder = (this.controlOrder !== null) ? this.controlOrder : this.currentAvatarData.controlOrder;
+
+			return controlOrder.filter(cid => cid in this.currentAvatarData.controls).map(control_id => {
+				return this.currentAvatarData.controls[control_id];
+			});
+		},
 		iconSelectOptions() {
 			return [{ value: null, label: "No icon" }].concat(this.icons.map(icon => {
 				return { value: icon.id, label: icon.id };
@@ -505,6 +547,15 @@ export default {
 			const resp = await axios.get("/api/admin/parameters");
 			this.registeredParams = resp.data.parameters;
 		},
+		resetCurrentParameterControl() {
+			this.currentParameterControl = {
+				label: "",
+				selectedParameter: null,
+				controlType: null,
+				defaultValue: null,
+				setValue: null,
+			};
+		},
 		changeBoard(boardId) {
 			this.currentBoard = boardId;
 			if (boardId !== null) {
@@ -514,16 +565,11 @@ export default {
 		},
 		changeAvatar(avatarId) {
 			this.currentAvatar = avatarId;
+			this.controlOrder = null; // reset control order
 		},
 		handleDroppedAvatar(avatarData) {
 			this.droppedAvatar = { error: null, data: null };
-			this.currentParameterControl = {
-				label: "",
-				selectedParameter: null,
-				controlType: null,
-				defaultValue: null,
-				setValue: null,
-			};
+			this.resetCurrentParameterControl();
 
 			this.droppedAvatar.data = avatarData;
 		},
@@ -559,7 +605,12 @@ export default {
 				},
 				parameter: this.newControlSelectedParameter,
 			}).then(resp => {
+				if (this.controlOrder) {
+					this.controlOrder.push(resp.data.control.id);
+				}
 				return this.updateBoards();
+			}).then(() => {
+				this.resetCurrentParameterControl();
 			}).catch(err => {
 				window.$message.error("Error while adding control:");
 			});
@@ -598,19 +649,35 @@ export default {
 			}).catch(err => {});
 		},
 		updateParameterControl(control) {
-			// console.log(Object.assign({}, control));
-
-			this.controlsUpdateLoading.add(control.id);
+			this.buttonLoading.add("control-" + control.id);
 			axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/p/${control.id}`, { control }).then(resp => {
 				return this.updateBoards();
 			}).catch(err => {
 				window.$message.error("Error while updating control");
 			}).finally(() => {
-				this.controlsUpdateLoading.delete(control.id);
+				this.buttonLoading.delete("control-" + control.id);
+			});
+		},
+		saveControlOrder() {
+			this.buttonLoading.add("save-order");
+			axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/control-order`, { order: this.controlOrder }).then(resp => {
+				return this.updateBoards();
+			}).then(() => {
+				this.controlOrder = null;
+			}).catch(err => {
+				window.$message.error("Error while saving control order");
+			}).finally(() => {
+				this.buttonLoading.delete("save-order");
 			});
 		},
 		deleteParameterControl(control_id) {
 			axios.delete(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/p/${control_id}`).then(resp => {
+				if (this.controlOrder) {
+					const idx = this.controlOrder.findIndex(cid => cid === control_id);
+					if (idx >= 0) {
+						this.controlOrder.splice(idx, 1);
+					}
+				}
 				return this.updateBoards();
 			}).catch(err => {
 				window.$message.error("Error while deleting control");
@@ -631,7 +698,19 @@ export default {
 		},
 		renderIconSelectTag(option) {
 			return h(NText, {}, () => option.option.label);
-		}
+		},
+		handleDragStart() {
+			if (!this.controlOrder) {
+				this.controlOrder = [ ...this.currentAvatarData.controlOrder ];
+			}
+		},
+		handleDragEnd(evt) {
+			const { oldIndex, newIndex } = evt;
+			const moveId = this.controlOrder[oldIndex];
+
+			this.controlOrder.splice(oldIndex, 1);
+			this.controlOrder.splice(newIndex, 0, moveId);
+		},
 	},
 	async created() {
 		await this.updateBoards();
@@ -639,3 +718,32 @@ export default {
 	}
 };
 </script>
+
+<style lang="scss">
+.control-card {
+	position: relative;
+	padding-left: 30px;
+	margin-bottom: 10px;
+
+	.handle {
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		background-color: #323232;
+		height: 100%;
+		width: 30px;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		cursor: grab;
+
+		&:hover {
+			background-color: #545454;
+		}
+
+		&:active {
+			cursor: grabbing;
+		}
+	}
+}
+</style>

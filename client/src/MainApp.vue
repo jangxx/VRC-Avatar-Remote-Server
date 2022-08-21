@@ -15,7 +15,7 @@
           <div class="text">Avatar: <b>{{ currentAvatar.name }}</b></div>
 
           <div class="controls">
-            <div v-for="(control, cid) in controls" :key="cid" class="control-wrapper">
+            <div v-for="control in controlsOrdered" :key="control.id" class="control-wrapper">
               <div 
                 v-if="control.types.control === 'button'" 
                 class="control control-button"
@@ -86,7 +86,14 @@ export default {
     currentAvatar() {
       if (this.board == null || this.avatarId == null) return null;
       return this.board.avatars[this.avatarId];
-    }
+    },
+    controlsOrdered() {
+      if (this.currentAvatar == null) return null;
+
+      return this.currentAvatar.controlOrder.map(cid => {
+        return this.controls[cid];
+      });
+    },
   },
   watch: {
     async loggedIn() {
