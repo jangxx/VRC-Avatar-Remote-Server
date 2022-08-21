@@ -355,7 +355,13 @@ async function main() {
 	});
 
 	adminRouter.post("/create-board", run(async function(req, res) {
-		const board = await boardManager.createBoard();
+		let board;
+
+		if (!req.query.duplicate) {
+			board = await boardManager.createBoard();
+		} else {
+			board = await boardManager.duplicateBoard(req.query.duplicate);
+		}
 
 		return res.json({
 			board: board.serialize(true),

@@ -1,6 +1,5 @@
 const { Server } = require("socket.io");
 
-const { sha1 } = require("./utils");
 const { VrcAvatarManager } = require("./vrc_avatar_manager");
 const { BoardManager } = require("./board_manager");
 

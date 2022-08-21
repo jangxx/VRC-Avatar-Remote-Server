@@ -45,23 +45,28 @@
 			<n-divider />
 
 			<n-collapse style="margin-bottom: 20px">
-				<n-collapse-item title="Rename/Delete board">
+				<n-collapse-item title="Rename/Delete/Duplicate board">
 					<n-card>
 						<n-space vertical size="large">
 							<n-input v-model:value="currentBoardData.name" placeholder="Board name" />
 
 							<n-space justify="space-between">
-								<n-popconfirm @positive-click="deleteBoard">
-									<template #icon>
-										<n-icon color="red">
-											<IconExclamationCircle />
-										</n-icon>
-									</template>
-									<template #trigger>
-										<n-button type="error">Delete board</n-button>
-									</template>
-									Are you sure you want to delete this board?
-								</n-popconfirm>
+								<n-space>
+									<n-popconfirm @positive-click="deleteBoard">
+										<template #icon>
+											<n-icon color="red">
+												<IconExclamationCircle />
+											</n-icon>
+										</template>
+										<template #trigger>
+											<n-button type="error">Delete board</n-button>
+										</template>
+										Are you sure you want to delete this board?
+									</n-popconfirm>
+
+									<n-button type="info" @click="duplicateBoard">Duplicate board</n-button>
+								</n-space>
+								
 								<n-button :disabled="boards[currentBoard].name == currentBoardData.name" @click="renameBoard">Rename board</n-button>
 							</n-space>
 						</n-space>
@@ -541,7 +546,7 @@ export default {
 				return this.updateBoards();
 			}).catch(err => {
 				window.$message.error("Error while creating board");
-			})
+			});
 		},
 		addParameterControl() {
 			axios.post(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/create-control`, {
@@ -574,6 +579,18 @@ export default {
 				this.changeBoard(null);
 				return this.updateBoards();
 			}).catch(err => {});
+		},
+		duplicateBoard() {
+			axios.post(`/api/admin/create-board`, null, {
+				params: {
+					duplicate: this.currentBoard,
+				}
+			}).then(resp => {
+				window.$message.success(`Successfully created board ${resp.data.board.name}`);
+				return this.updateBoards();
+			}).catch(err => {
+				window.$message.error("Error while duplicating board");
+			});
 		},
 		setBoardPassword(newPassword) {
 			axios.put(`/api/admin/b/${this.currentBoard}/password`, { password: newPassword }).then(resp => {
