@@ -19,7 +19,14 @@ class SocketManager {
 	}
 
 	_addSocket(socket) {
-		const board = this._boardManager.getBoard(socket.data.boardId);
+		let board;
+		try {
+			board = this._boardManager.getBoard(socket.data.boardId);
+		} catch(err) {
+			console.log(`Adding socket failed for board ${board.id}: `, err);
+			socket.disconnect(true);
+			return;
+		}
 
 		this._sockets[socket.id] = {
 			socket,
