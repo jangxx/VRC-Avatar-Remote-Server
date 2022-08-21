@@ -52,6 +52,15 @@ class SocketIoAvatarParamControl extends AvatarParamControl {
 	isToggled(parameterValues) {
 		if (!(this.parameterName in parameterValues)) return false;
 
+		// special case for an inverted toggle (default = True, set = False)
+		if (this._controlType === "toggle"
+			&& this._dataType === "bool"
+			&& this._defaultValue === true
+			&& this._setValue === false)
+		{
+			return parameterValues[this.parameterName] != this._setValue;
+		}
+
 		return parameterValues[this.parameterName] == this._setValue;
 	}
 }
