@@ -74,8 +74,8 @@ docker run \
 	--restart unless-stopped \ # automatically (re)start the server when your PC restarts
 	-v /path/to/your/config/directory:/data/config \
 	-v /path/to/icons:/data/config \ # optionally set the path to where icons should be stored
-	-b 8080:8080 # set the address and port for the webinterface
-	-b 9001:9001/udp # set the OSC input port
+	-p 8080:8080 \ # set the address and port for the webinterface
+	-p 9001:9001/udp # set the OSC input port
 ```
 
 ## Running the server with docker-compose
