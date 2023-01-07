@@ -28,7 +28,7 @@ export default {
 @import "assets/style";
 
 body {
-  max-width: 1000px;
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
 }

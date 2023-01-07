@@ -27,6 +27,96 @@ function fixControlOrder(control_order, all_control_ids) {
 	return [ ...control_order, ...ids ]; // just append the non ordered ids at the end
 }
 
+class BoardAvatar {
+	// performs deserialization
+	constructor(definition, verifyMode = false) {
+		this._name = definition.name;
+
+		this._controls = {};
+		for (const controlId in definition.controls) {
+			if (verifyMode) {
+				console.log(`Validating avatar control ${controlId}`);
+			}
+			this._controls[controlId] = new AvatarParamControl({ ...definition.controls[controlId], id: controlId });
+		}
+
+		this._controlOrder = fixControlOrder(definition.controlOrder, Object.keys(this._controls));
+	}
+
+	get name() { return this._name; }
+	get controlOrder() { return this._controlOrder; }
+
+	serialize() {
+		return {
+			name: this.name,
+			controlOrder: this.controlOrder,
+			controls: Object.fromEntries(
+				Object.entries(this._controls).map(c => [c[0], c[1].serialize()] )
+			),
+		}
+	}
+
+	getControls() {
+		return this._controlOrder.map(cid => this.getControl(cid));
+	}
+
+	getControl(id) {
+		if (!(id in this._controls)) {
+			throw new Error(`No control with id ${id} exists on this avatar`);
+		}
+		return this._controls[id];
+	}
+
+	getControlOrderedPosition(id) {
+		return this._controlOrder.findIndex(cid => cid === id);
+	}
+
+	hasControl(id) {
+		return id in this._controls;
+	}
+
+	updateControl(control) {
+		if (!(control.id in this._controls)) {
+			throw new Error(`No control with id ${control.id} exists on this avatar`);
+		}
+		this._controls[control.id] = control;
+	}
+
+	addControl(control, orderPosition = null) {
+		this._controls[control.id] = control;
+
+		if (orderPosition === null) {
+			this._controlOrder.push(control.id);
+		} else {
+			this._controlOrder.splice(orderPosition, 0, control.id);
+		}
+	}
+
+	removeControl(id) {
+		if (!(id in this._controls)) {
+			throw new Error(`No control with id ${id} exists on this avatar`);
+		}
+		delete this._controls[id];
+
+		this._controlOrder = this._controlOrder.filter(cid => cid != id);
+	}
+
+	setControlOrder(controlOrder) {
+		// make sure that the ids in controlOrder are all correct
+		for (const cid of controlOrder) {
+			if (!this.hasControl(cid)) {
+				throw new Error("Invalid control id");
+			}
+		}
+
+		if (controlOrder.length !== Object.keys(this._controls).length) {
+			throw new Error("Control order is missing some control ids");
+		}
+
+		this._controlOrder = controlOrder;
+	}
+}
+
 class Board extends EventEmitter {
 	/**
 	 * 
@@ -53,22 +143,11 @@ class Board extends EventEmitter {
 	}
 
 	serialize(external = false, mask_ids = false) {
-		function serializeAvatar(avi_def) {
-			const serialized = {
-				controls: Object.fromEntries(
-					Object.entries(avi_def.controls).map(c => [c[0], c[1].serialize()] )
-				),
-				name: avi_def.name,
-				controlOrder: fixControlOrder(avi_def.controlOrder, Object.keys(avi_def.controls)),
-			};
-			return serialized;
-		}
-
 		return {
 			password: (!external) ? this._password : (this._password !== null),
 			name: this._name,
 			avatars: Object.fromEntries(
-				Object.entries(this._avatars).map(elem => [(mask_ids) ? this._avatarManager.hashAvatarId(elem[0]) : elem[0], serializeAvatar(elem[1])] )
+				Object.entries(this._avatars).map(elem => [(mask_ids) ? this._avatarManager.hashAvatarId(elem[0]) : elem[0], elem[1].serialize()] )
 			),
 		};
 	}
@@ -84,26 +163,6 @@ class Board extends EventEmitter {
 	}
 
 	_deserialize(boardDef, verifyMode) {
-		function deserializeAvatar(avi_def) {
-			const deserialized = {
-				controls: Object.fromEntries(
-					Object.entries(avi_def.controls).map(c => {
-						if (verifyMode) {
-							console.log(`Validating avatar control ${c[0]}`);
-						}
-						
-						return [
-							c[0], 
-							new AvatarParamControl({ ...c[1], id: c[0] })
-						];
-					})
-				),
-				name: avi_def.name,
-				controlOrder: fixControlOrder(avi_def.controlOrder, Object.keys(avi_def.controls)),
-			};
-			return deserialized;
-		}
-
 		this._password = boardDef.password;
 		this._name = boardDef.name;
 
@@ -112,7 +171,7 @@ class Board extends EventEmitter {
 				if (verifyMode) {
 					console.log(`Validating avatar ${elem[0]}`);
 				}
-				return [elem[0], deserializeAvatar(elem[1])];
+				return [elem[0], new BoardAvatar(elem[1], verifyMode)];
 			})
 		);
 	}
@@ -120,10 +179,11 @@ class Board extends EventEmitter {
 	// only needed for the duplicate functionality
 	_generateNewControlIds() {
 		for (let avid in this._avatars) {
-			for (let controlId in this._avatars[avid].controls) {
+			for (const control of this._avatars[avid].getControls()) {
 				const newControlId = uuiv4();
-				this._avatars[avid].controls[newControlId] = this._avatars[avid].controls[controlId];
-				delete this._avatars[avid].controls[controlId];
+				const updatedControl = new AvatarParamControl({...control.serialize(), id: newControlId });
+				this._avatars[avid].addControl(updatedControl);
+				this._avatars[avid].removeControl(control.id);
 			}
 		}
 	}
@@ -154,7 +214,7 @@ class Board extends EventEmitter {
 	}
 
 	hasControl(avid, id) {
-		return this.hasAvatar(avid) && id in this._avatars[avid].controls;
+		return this.hasAvatar(avid) && this._avatars[avid].hasControl(id);
 	}
 
 	getControl(avid, id) {
@@ -162,13 +222,13 @@ class Board extends EventEmitter {
 			throw new Error("This control was not found on this board for this avatar");
 		}
 
-		return this._avatars[avid].controls[id].clone();
+		return this._avatars[avid].getControl(id).clone();
 	}
 
 	getParametersForAvatar(avid) {
 		const avParams = new Set();
-		for (let controlId in this._avatars[avid].controls) {
-			avParams.add(this._avatars[avid].controls[controlId].parameterName);
+		for (const control of this._avatars[avid].getControls()) {
+			avParams.add(control.parameterName);
 		}
 
 		return [...avParams].map(parameter => {
@@ -180,8 +240,8 @@ class Board extends EventEmitter {
 		let result = [];
 		for (let avid in this._avatars) {
 			const avParams = new Set();
-			for (let controlId in this._avatars[avid].controls) {
-				avParams.add(this._avatars[avid].controls[controlId].parameterName);
+			for (const control of this._avatars[avid].getControls()) {
+				avParams.add(control.parameterName);
 			}
 
 			result = result.concat([...avParams].map(parameter => {
@@ -194,10 +254,11 @@ class Board extends EventEmitter {
 	async addAvatar(avid, name) {
 		if (this.hasAvatar(avid)) throw new Error("This avatar has already been added");
 
-		this._avatars[avid] = {
-			controls: {},
+		this._avatars[avid] = new BoardAvatar({
 			name,
-		};
+			controls: {},
+			controlOrder: [],
+		});
 
 		await this._store();
 	}
@@ -214,8 +275,7 @@ class Board extends EventEmitter {
 		let performed_change = false;
 
 		for (let avid in this._avatars) {
-			for (let controlId in this._avatars[avid].controls) {
-				const control = this._avatars[avid].controls[controlId];
+			for (const control of this._avatars[avid].getControls()) {
 				if (!this._iconManager.iconExists(control.icon)) {
 					control.unsetIcon();
 					performed_change = true;
@@ -266,8 +326,7 @@ class Board extends EventEmitter {
 			icon
 		});
 
-		this._avatars[avid].controls[parameterControl.id] = parameterControl;
-		this._avatars[avid].controlOrder.push(parameterControl.id);
+		this._avatars[avid].addControl(parameterControl);
 
 		await this._store();
 
@@ -279,8 +338,7 @@ class Board extends EventEmitter {
 			throw new Error("This control was not found on this board for this avatar");
 		}
 
-		delete this._avatars[avid].controls[id];
-		this._avatars[avid].controlOrder = this._avatars[avid].controlOrder.filter(cid => cid !== id);
+		this._avatars[avid].removeControl(id);
 
 		await this._store();
 	}
@@ -290,24 +348,30 @@ class Board extends EventEmitter {
 			throw new Error("This control was not found on this board for this avatar");
 		}
 
-		this._avatars[avid].controls[parameterControl.id] = parameterControl;
+		this._avatars[avid].updateControl(parameterControl);
+
+		await this._store();
+	}
+
+	async duplicateControl(avid, id) {
+		const sourceControl = this.getControl(avid, id);
+
+		const duplicatedControl = new AvatarParamControl({
+			...sourceControl.serialize(),
+			id: uuiv4(), // new random id 
+		});
+
+		this._avatars[avid].addControl(duplicatedControl, this._avatars[avid].getControlOrderedPosition(id) + 1);
 
 		await this._store();
 	}
 
 	async setControlOrder(avid, controlOrder) {
-		// make sure that the ids in controlOrder are all correct
-		for (const cid of controlOrder) {
-			if (!this.hasControl(avid, cid)) {
-				throw new Error("Invalid control id");
-			}
+		if (!this.hasAvatar(avid)) {
+			throw new Error("Invalid avatar id");
 		}
 
-		if (controlOrder.length !== Object.keys(this._avatars[avid].controls).length) {
-			throw new Error("Order is missing some controls");
-		}
-
-		this._avatars[avid].controlOrder = controlOrder;
+		this._avatars[avid].setControlOrder(controlOrder);
 
 		await this._store();
 	}

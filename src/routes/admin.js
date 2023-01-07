@@ -153,24 +153,27 @@ adminRouter.put("/b/:board/default", requireBoard("board", boardManager), async 
 	return res.end();
 });
 
-adminRouter.post("/b/:board/add-avatar", requireBoard("board", boardManager), async function(req, res) {
-	if (!("avatar" in req.body)) {
-		return res.sendStatus(400);
-	}
+adminRouter.post("/b/:board/add-avatar",
+	requireBoard("board", boardManager),
+	processRequest({
+		body: z.object({
+			avatar: z.object({
+				id: z.string(),
+				name: z.string(),
+			})
+		}),
+	}),
+	async function(req, res) {
+		try {
+			await req.board.addAvatar(req.body.avatar.id, req.body.avatar.name);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
 
-	if (!("id" in req.body.avatar && "name" in req.body.avatar)) {
-		return res.sendStatus(400);
+		return res.end();
 	}
-
-	try {
-		await req.board.addAvatar(req.body.avatar.id, req.body.avatar.name);
-	} catch(err) {
-		err.statusCode = 400;
-		throw err;
-	}
-
-	return res.end();
-});
+);
 
 adminRouter.post("/b/:board/a/:avatarId/create-control", 
 	requireBoard("board", boardManager),
@@ -282,5 +285,24 @@ adminRouter.put("/b/:board/a/:avatarId/control-order",
 		return res.end();
 	}
 );
+
+adminRouter.post("/b/:board/a/:avatarId/duplicate-control",
+	processRequest({
+		body: z.object({
+			controlId: z.string(),
+		})
+	}),
+	requireBoard("board", boardManager),
+	async function(req, res) {
+		try {
+			await req.board.duplicateControl(req.params.avatarId, req.body.controlId);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.end();
+	}
+)
 
 module.exports = { adminRouter };

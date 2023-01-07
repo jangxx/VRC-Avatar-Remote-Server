@@ -298,6 +298,7 @@
 									</n-gi>
 								</n-grid>
 								<n-space justify="end">
+									<n-button :loading="buttonLoading.has('control-' + control.id + '-duplicate')" @click="duplicateParameterControl(control)">Duplicate</n-button>
 									<n-button secondary type="primary" :loading="buttonLoading.has('control-' + control.id)" @click="updateParameterControl(control)">Save</n-button>
 									<n-popconfirm @positive-click="deleteParameterControl(control.id)">
 										<template #trigger>
@@ -647,6 +648,16 @@ export default {
 			axios.put(`/api/admin/b/${this.currentBoard}/password`, { password: newPassword }).then(resp => {
 				return this.updateBoards();
 			}).catch(err => {});
+		},
+		duplicateParameterControl(control) {
+			this.buttonLoading.add("control-" + control.id + "-duplicate");
+			axios.post(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/duplicate-control`, { controlId: control.id }).then(resp => {
+				return this.updateBoards();
+			}).catch(err => {
+				window.$message.error("Error while duplicating control");
+			}).finally(() => {
+				this.buttonLoading.delete("control-" + control.id + "-duplicate");
+			});
 		},
 		updateParameterControl(control) {
 			this.buttonLoading.add("control-" + control.id);
