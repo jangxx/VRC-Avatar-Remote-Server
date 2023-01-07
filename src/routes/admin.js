@@ -1,9 +1,9 @@
 const express = require("express");
 const fileUpload = require("express-fileupload");
-const validateInput = require("express-ajv-middleware").validateRoute;
+const { z } = require("zod");
+const { processRequest } = require("zod-express-middleware");
 
 const { requireAdmin } = require("../require_login");
-const { Obj } = require("../schema_utils");
 const ServiceManager = require("../service_manager");
 const { requireBoard } = require("../board_manager");
 
@@ -174,21 +174,21 @@ adminRouter.post("/b/:board/add-avatar", requireBoard("board", boardManager), as
 
 adminRouter.post("/b/:board/a/:avatarId/create-control", 
 	requireBoard("board", boardManager),
-	validateInput({
-		body: Obj()
-			.prop("control", Obj()
-				.prop("dataType", { type: "string" })
-				.prop("controlType", { type: "string" })
-				.prop("setValue", { type: [ "boolean", "integer", "number", "null" ] })
-				.prop("defaultValue", { type: [ "boolean", "integer", "number", "null" ] })
-				.prop("label", { type: "string" })
-				.build())
-			.prop("parameter", Obj()
-				.prop("inputAddress", { type: "string" })
-				.prop("outputAddress", { type: "string" })
-				.prop("name", { type: "string" })
-				.build())
-			.build()
+	processRequest({
+		body: z.object({
+			control: z.object({
+				dataType: z.string(),
+				controlType: z.string(),
+				setValue: z.union([ z.boolean(), z.number(), z.null() ]),
+				defaultValue: z.union([ z.boolean(), z.number(), z.null() ]),
+				label: z.string(),
+			}),
+			parameter: z.object({
+				inputAddress: z.string(),
+				outputAddress: z.string(),
+				name: z.string(),
+			}),
+		})
 	}),
 	async function(req, res) {
 		let control;
@@ -224,35 +224,51 @@ adminRouter.delete("/b/:board/a/:avatarId/p/:controlId", requireBoard("board", b
 	return res.end();
 });
 
-adminRouter.put("/b/:board/a/:avatarId/p/:controlId", requireBoard("board", boardManager), async function(req, res) {
-	let control;
-	try {
-		control = req.board.constructControl({
-			avid: req.params.avatarId,
-			id: req.params.controlId,
-			parameterName: req.body.control.parameterName,
-			dataType: req.body.control.dataType,
-			controlType: req.body.control.controlType,
-			setValue: req.body.control.setValue,
-			defaultValue: req.body.control.defaultValue,
-			label: req.body.control.label,
-			icon: req.body.control.icon,
-		});
+adminRouter.put("/b/:board/a/:avatarId/p/:controlId",
+	requireBoard("board", boardManager),
+	processRequest({
+		body: z.object({
+			control: z.object({
+				dataType: z.string(),
+				controlType: z.string(),
+				parameterName: z.string(),
+				setValue: z.union([ z.boolean(), z.number(), z.null() ]),
+				defaultValue: z.union([ z.boolean(), z.number(), z.null() ]),
+				label: z.string(),
+				icon: z.string().nullable(),
+			}),
+		}),
+	}),
+	async function(req, res) {
+		let control;
+		try {
+			control = req.board.constructControl({
+				avid: req.params.avatarId,
+				id: req.params.controlId,
+				parameterName: req.body.control.parameterName,
+				dataType: req.body.control.dataType,
+				controlType: req.body.control.controlType,
+				setValue: req.body.control.setValue,
+				defaultValue: req.body.control.defaultValue,
+				label: req.body.control.label,
+				icon: req.body.control.icon,
+			});
 
-		await req.board.updateControl(req.params.avatarId, control);
-	} catch(err) {
-		err.statusCode = 400;
-		throw err;
+			await req.board.updateControl(req.params.avatarId, control);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.json({ control: control.serialize() });
 	}
-
-	return res.json({ control: control.serialize() });
-});
+);
 
 adminRouter.put("/b/:board/a/:avatarId/control-order",
-	validateInput({
-		body: Obj()
-			.prop("order", { type: "array", items: { type: "string" } })
-			.build()
+	processRequest({
+		body: z.object({
+			order: z.array(z.string()),
+		})
 	}),
 	requireBoard("board", boardManager),
 	async function(req, res) {
