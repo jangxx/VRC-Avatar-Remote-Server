@@ -221,94 +221,16 @@
 					@end="handleDragEnd"
 				>
 					<template #item="{element: control}">
-						<n-card :key="control.id" class="control-card">
-							<div class="handle">
-								<n-icon size="20">
-									<icon-grip />
-								</n-icon>
-							</div>
-							<n-form>
-								<n-grid :cols="6" x-gap="12">
-									<n-gi>
-										<n-space :vertical="true" align="stretch">
-											<n-space v-if="control.icon !== null" justify="center">
-												<n-image width="100" height="100" :src="'/i/' + control.icon" :preview-disabled="true" />
-											</n-space>
-											<n-empty v-else description="No icon set" size="medium">
-												<template #icon>
-													<n-icon>
-														<IconImage />
-													</n-icon>
-												</template>
-											</n-empty>
-											<n-select :options="iconSelectOptions" :render-tag="renderIconSelectTag" :render-label="renderIconSelectOption" v-model:value="control.icon" />
-											<!-- <n-button secondary round>
-												<template #icon>
-													<n-icon><IconEdit /></n-icon>
-												</template>
-											</n-button> -->
-										</n-space>
-									</n-gi>
-
-									<n-gi :span="5">
-										<n-grid x-gap="12" :cols="8">
-											<n-gi>
-												<n-form-item label="Control type">
-													<n-input size="small" round :value="control.controlType" readonly disabled />
-												</n-form-item>
-											</n-gi>
-											<n-gi>
-												<n-form-item label="Data type">
-													<n-input size="small" round :value="control.dataType" readonly disabled />
-												</n-form-item>
-											</n-gi>
-											<n-gi span="2">
-												<n-form-item label="Parameter name">
-													<n-input size="small" round :value="control.parameterName" readonly disabled />
-												</n-form-item>
-											</n-gi>
-											<n-gi span="2">
-												<n-form-item label="Input address">
-													<n-input size="small" round :value="currentAvatarParams[control.parameterName].input" readonly disabled />
-												</n-form-item>
-											</n-gi>
-											<n-gi span="2">
-												<n-form-item label="Output address">
-													<n-input size="small" round :value="currentAvatarParams[control.parameterName].output" readonly disabled />
-												</n-form-item>
-											</n-gi>
-											<n-gi span="2">
-												<n-form-item v-if="control.controlType != 'range'" label="Default value">
-													<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.defaultValue" size="small" round />
-													<n-checkbox v-else v-model:checked="control.defaultValue" />
-												</n-form-item>
-											</n-gi>
-											<n-gi span="2">
-												<n-form-item v-if="control.controlType != 'range'" label="Set value">
-													<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.setValue" size="small" round />
-													<n-checkbox v-else v-model:checked="control.setValue" />
-												</n-form-item>
-											</n-gi>
-											<n-gi span="4">
-												<n-form-item label="Label">
-													<n-input size="small" v-model:value="control.label" />
-												</n-form-item>
-											</n-gi>
-										</n-grid>
-									</n-gi>
-								</n-grid>
-								<n-space justify="end">
-									<n-button :loading="buttonLoading.has('control-' + control.id + '-duplicate')" @click="duplicateParameterControl(control)">Duplicate</n-button>
-									<n-button secondary type="primary" :loading="buttonLoading.has('control-' + control.id)" @click="updateParameterControl(control)">Save</n-button>
-									<n-popconfirm @positive-click="deleteParameterControl(control.id)">
-										<template #trigger>
-											<n-button secondary type="error">Delete</n-button>
-										</template>
-										Are you sure you want to delete this control?
-									</n-popconfirm>
-								</n-space>
-							</n-form>
-						</n-card>
+						<control-settings
+							v-model="this.currentAvatarData.controls[control.id]"
+							@update="updateBoards()"
+							@error="showError"
+							:input-parameter="currentAvatarParams[control.parameterName].input"
+							:output-parameter="currentAvatarParams[control.parameterName].output"
+							:board-id="currentBoard"
+							:avatar-id="currentAvatar"
+							:icons="icons"
+						/>
 					</template>
 				</draggable>
 				
@@ -318,6 +240,7 @@
 						:loading="buttonLoading.has('save-order')"
 						@click="saveControlOrder()"
 					>Save control order</n-button>
+					<n-button @click="controlOrder = null">Reset control order</n-button>
 				</n-space>
 			</template>
 
@@ -330,22 +253,21 @@
 <script>
 import axios from "axios";
 import { darkTheme, NText, useMessage } from "naive-ui";
-import { Plus, Trash, ExclamationCircle, Image, GripVertical } from "@vicons/fa";
-import { h } from "vue";
+import { Plus, Trash, ExclamationCircle } from "@vicons/fa";
+
 import draggable from "vuedraggable";
 
-import ImageSelectOption from "./components/ImageSelectOption.vue";
 import Dropzone from "./components/Dropzone.vue";
+import ControlSettingsComponent from "./components/ControlSettingsComponent.vue";
 
 export default {
 	components: {
 		Dropzone,
 		draggable,
+		ControlSettings: ControlSettingsComponent,
 		IconPlus: Plus,
 		IconTrash: Trash,
 		IconExclamationCircle: ExclamationCircle,
-		IconImage: Image,
-		IconGrip: GripVertical,
 	},
 	expose: [ "updateBoards" ],
 	setup() {
@@ -515,11 +437,6 @@ export default {
 				return this.currentAvatarData.controls[control_id];
 			});
 		},
-		iconSelectOptions() {
-			return [{ value: null, label: "No icon" }].concat(this.icons.map(icon => {
-				return { value: icon.id, label: icon.id };
-			}));
-		},
 		currentAvatarParams() {
 			if (!(this.currentAvatar in this.registeredParams)) {
 				return {};
@@ -538,6 +455,7 @@ export default {
 
 			if (this.currentBoard !== null) {
 				this.currentBoardData = Object.assign({ newPassword: "" }, this.boards[this.currentBoard]);
+				this.controlOrder = null; // reset custom control order
 			}
 		},
 		async updateIcons() {
@@ -649,26 +567,6 @@ export default {
 				return this.updateBoards();
 			}).catch(err => {});
 		},
-		duplicateParameterControl(control) {
-			this.buttonLoading.add("control-" + control.id + "-duplicate");
-			axios.post(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/duplicate-control`, { controlId: control.id }).then(resp => {
-				return this.updateBoards();
-			}).catch(err => {
-				window.$message.error("Error while duplicating control");
-			}).finally(() => {
-				this.buttonLoading.delete("control-" + control.id + "-duplicate");
-			});
-		},
-		updateParameterControl(control) {
-			this.buttonLoading.add("control-" + control.id);
-			axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/p/${control.id}`, { control }).then(resp => {
-				return this.updateBoards();
-			}).catch(err => {
-				window.$message.error("Error while updating control");
-			}).finally(() => {
-				this.buttonLoading.delete("control-" + control.id);
-			});
-		},
 		saveControlOrder() {
 			this.buttonLoading.add("save-order");
 			axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/control-order`, { order: this.controlOrder }).then(resp => {
@@ -681,19 +579,6 @@ export default {
 				this.buttonLoading.delete("save-order");
 			});
 		},
-		deleteParameterControl(control_id) {
-			axios.delete(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/p/${control_id}`).then(resp => {
-				if (this.controlOrder) {
-					const idx = this.controlOrder.findIndex(cid => cid === control_id);
-					if (idx >= 0) {
-						this.controlOrder.splice(idx, 1);
-					}
-				}
-				return this.updateBoards();
-			}).catch(err => {
-				window.$message.error("Error while deleting control");
-			});
-		},
 		deleteIcon(icon_id) {
 			axios.delete(`/api/admin/icon/${icon_id}`).then(resp => {
 				return Promise.all([
@@ -703,12 +588,6 @@ export default {
 			}).catch(err => {
 				window.$message.error("Error while deleting icon");
 			});
-		},
-		renderIconSelectOption(option) {
-			return h(ImageSelectOption, { value: option.value, label: option.label });
-		},
-		renderIconSelectTag(option) {
-			return h(NText, {}, () => option.option.label);
 		},
 		handleDragStart() {
 			if (!this.controlOrder) {
@@ -722,6 +601,9 @@ export default {
 			this.controlOrder.splice(oldIndex, 1);
 			this.controlOrder.splice(newIndex, 0, moveId);
 		},
+		showError(message) {
+			window.$message.error(message);
+		}
 	},
 	async created() {
 		await this.updateBoards();
@@ -731,30 +613,5 @@ export default {
 </script>
 
 <style lang="scss">
-.control-card {
-	position: relative;
-	padding-left: 30px;
-	margin-bottom: 10px;
 
-	.handle {
-		position: absolute;
-		left: 0px;
-		top: 0px;
-		background-color: #323232;
-		height: 100%;
-		width: 30px;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		cursor: grab;
-
-		&:hover {
-			background-color: #545454;
-		}
-
-		&:active {
-			cursor: grabbing;
-		}
-	}
-}
 </style>
