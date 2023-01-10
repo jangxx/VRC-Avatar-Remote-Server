@@ -101,6 +101,12 @@ class BoardAvatar {
 		this._controlOrder = this._controlOrder.filter(cid => cid != id);
 	}
 
+	replaceControl(id, control) {
+		const currentOrderPos = this.getControlOrderedPosition(id);
+		this.removeControl(id);
+		this.addControl(control, currentOrderPos); // splice it into the same position
+	}
+
 	setControlOrder(controlOrder) {
 		// make sure that the ids in controlOrder are all correct
 		for (const cid of controlOrder) {
@@ -182,8 +188,7 @@ class Board extends EventEmitter {
 			for (const control of this._avatars[avid].getControls()) {
 				const newControlId = uuiv4();
 				const updatedControl = new AvatarParamControl({...control.serialize(), id: newControlId });
-				this._avatars[avid].addControl(updatedControl);
-				this._avatars[avid].removeControl(control.id);
+				this._avatars[avid].replaceControl(control.id, updatedControl);
 			}
 		}
 	}
