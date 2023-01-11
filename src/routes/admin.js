@@ -267,24 +267,27 @@ adminRouter.put("/b/:board/a/:avatarId/p/:controlId",
 	}
 );
 
-adminRouter.put("/b/:board/a/:avatarId/control-order",
-	processRequest({
-		body: z.object({
-			order: z.array(z.string()),
-		})
-	}),
-	requireBoard("board", boardManager),
-	async function(req, res) {
-		try {
-			await req.board.setControlOrder(req.params.avatarId, req.body.order);
-		} catch(err) {
-			err.statusCode = 400;
-			throw err;
-		}
+// TODO: remove
+// adminRouter.put("/b/:board/a/:avatarId/control-order",
+// 	processRequest({
+// 		body: z.object({
+// 			order: z.array(z.string()),
+// 		})
+// 	}),
+// 	requireBoard("board", boardManager),
+// 	async function(req, res) {
+// 		try {
+// 			await req.board.setControlOrder(req.params.avatarId, req.body.order);
+// 		} catch(err) {
+// 			err.statusCode = 400;
+// 			throw err;
+// 		}
 
-		return res.end();
-	}
-);
+// 		return res.end();
+// 	}
+// );
+
+// TODO: add group specific endpoints
 
 adminRouter.post("/b/:board/a/:avatarId/duplicate-control",
 	processRequest({

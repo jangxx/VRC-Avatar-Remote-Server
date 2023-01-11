@@ -8,23 +8,97 @@ const { VrcAvatarManager } = require("./vrc_avatar_manager");
 const { BackendAvatarParamControl: AvatarParamControl } = require("./backend_avatar_param_control");
 
 /**
- * Automatically create and manage the control order to be backwards compatible
+ * Automatically create and manage the groups to be backwards compatible
  */
-function fixControlOrder(control_order, all_control_ids) {
+function fixAvatarGroups(avatar_groups, all_control_ids, legacy_controlOrder) {
 	const ids = new Set(all_control_ids);
+	const result_groups = {};
 
-	if (control_order) {
-		// remove entries that are in the order but not in the controls (TODO: this could also be a validation error)
-		control_order = control_order.filter(cid => ids.has(cid));
+	if (avatar_groups) {
+		for (const groupId in avatar_groups) {
+			// only include ids that actually exist
+			const valid_controls = avatar_groups[groupId].controls.filter(cid => ids.has(cid));
+			result_groups[groupId] = new BoardAvatarGroup({ ...avatar_groups[groupId], controls: valid_controls });
 
-		for (const cid of control_order) {
-			ids.delete(cid);
+			for (const controlId of result_groups[groupId].controls) {
+				ids.delete(controlId);
+			}
 		}
-	} else {
-		control_order = [];
 	}
 
-	return [ ...control_order, ...ids ]; // just append the non ordered ids at the end
+	// this will be called if the default group was accidentally deleted or if we are migrating from a non-groups avatar
+	if (!("default" in result_groups)) {
+		result_groups["default"] = new BoardAvatarGroup({ name: null, controls: [] });
+	}
+
+	// if the old controlOrder list still exists, we use it for the remaining ungrouped ids
+	let ids_ordered = [...ids];
+
+	if (legacy_controlOrder && Array.isArray(legacy_controlOrder)) {
+		ids_ordered = legacy_controlOrder.filter(cid => ids.has(cid)); // only add valid control ids
+		const legacyIdsSet = new Set(ids_ordered);
+		ids_ordered = ids_ordered.concat([...ids].filter(cid => !legacyIdsSet.has(cid))); // append the rest of the ids
+	}
+
+	// add the remaining ids to the end of the default group
+	for (const controlId of ids_ordered) {
+		result_groups["default"].addControl(controlId);
+	}
+
+	return result_groups;
+}
+
+class BoardAvatarGroup {
+	constructor(definition) {
+		this._name = definition.name;
+
+		this._controls = definition.controls;
+	}
+
+	get name() { return this._name; }
+
+	get controls() {
+		return this._controls;
+	}
+
+	serialize() {
+		return {
+			name: this.name,
+			controls: this.controls,
+		};
+	}
+
+	addControl(id, position = null) {
+		if (position === null) {
+			this._controls.push(id);
+		} else {
+			this._controls.splice(position, 0, id);
+		}
+	}
+
+	removeControl(id) {
+		if (!this._controls.includes(id)) {
+			throw new Error(`This group does not contain control ${id}`);
+		}
+		this._controls = this._controls.filter(cid => cid !== id);
+	}
+
+	hasControl(id) {
+		return this._controls.includes(id);
+	}
+
+	getControlPosition(id) {
+		return this._controls.findIndex(cid => cid === id);
+	}
+
+	setControlOrder(order) {
+		// first verify that order only contains valid control ids
+		if (order.length != this._controls.length || (new Set(this._controls.concat(order))).size() != this._controls.length) {
+			throw new Error("Order definition is not valid (ids don't match the ones currently in the group");
+		}
+
+		this._controls = order;
+	}
 }
 
 class BoardAvatar {
@@ -40,24 +114,33 @@ class BoardAvatar {
 			this._controls[controlId] = new AvatarParamControl({ ...definition.controls[controlId], id: controlId });
 		}
 
-		this._controlOrder = fixControlOrder(definition.controlOrder, Object.keys(this._controls));
+		this._groups = fixAvatarGroups(definition.groups, Object.keys(this._controls), definition.controlOrder);
+
+		this._controlGroups = {}; // lookup list to find the group for each control faster
+		for (const groupId in this._groups) {
+			for (const controlId of this._groups[groupId].controls) {
+				this._controlGroups[controlId] = groupId;
+			}
+		}
 	}
 
 	get name() { return this._name; }
-	get controlOrder() { return this._controlOrder; }
+	get groups() { return this._groups; }
 
 	serialize() {
 		return {
 			name: this.name,
-			controlOrder: this.controlOrder,
+			groups: Object.fromEntries(
+				Object.entries(this._groups).map(g => [g[0], g[1].serialize()])
+			),
 			controls: Object.fromEntries(
-				Object.entries(this._controls).map(c => [c[0], c[1].serialize()] )
+				Object.entries(this._controls).map(c => [c[0], c[1].serialize()])
 			),
 		}
 	}
 
 	getControls() {
-		return this._controlOrder.map(cid => this.getControl(cid));
+		return Object.values(this._controls);
 	}
 
 	getControl(id) {
@@ -67,14 +150,18 @@ class BoardAvatar {
 		return this._controls[id];
 	}
 
-	getControlOrderedPosition(id) {
-		return this._controlOrder.findIndex(cid => cid === id);
-	}
-
 	hasControl(id) {
 		return id in this._controls;
 	}
 
+	getGroupForControl(id) {
+		if (!(control.id in this._controls)) {
+			throw new Error(`No control with id ${control.id} exists on this avatar`);
+		}
+		return this._controlGroups[id];
+	}
+
+	// overwrite
 	updateControl(control) {
 		if (!(control.id in this._controls)) {
 			throw new Error(`No control with id ${control.id} exists on this avatar`);
@@ -82,14 +169,15 @@ class BoardAvatar {
 		this._controls[control.id] = control;
 	}
 
-	addControl(control, orderPosition = null) {
+	addControl(control, group = null, position = null) {
 		this._controls[control.id] = control;
 
-		if (orderPosition === null) {
-			this._controlOrder.push(control.id);
-		} else {
-			this._controlOrder.splice(orderPosition, 0, control.id);
+		if (group === null) {
+			group = "default";
 		}
+
+		this._groups[group].addControl(control.id, position);
+		this._controlGroups[control.id] = group;
 	}
 
 	removeControl(id) {
@@ -98,28 +186,41 @@ class BoardAvatar {
 		}
 		delete this._controls[id];
 
-		this._controlOrder = this._controlOrder.filter(cid => cid != id);
+		this._groups[this._controlGroups[id]].removeControl(id);
+		delete this._controlGroups[id];
 	}
 
 	replaceControl(id, control) {
-		const currentOrderPos = this.getControlOrderedPosition(id);
+		const currentGroup = this._controlGroups[id];
+		const currentOrderPos = this._groups[currentGroup].getControlPosition(id);
 		this.removeControl(id);
-		this.addControl(control, currentOrderPos); // splice it into the same position
+		this.addControl(control, currentGroup, currentOrderPos); // splice it into the same position in the same group
 	}
 
-	setControlOrder(controlOrder) {
-		// make sure that the ids in controlOrder are all correct
-		for (const cid of controlOrder) {
-			if (!this.hasControl(cid)) {
-				throw new Error("Invalid control id");
-			}
+	createGroup(name) {
+		const groupId = uuiv4();
+		this._groups[groupId] = new BoardAvatarGroup({
+			name,
+			controls: [],
+		});
+		return groupId;
+	}
+
+	removeGroup(id) {
+		if (!(id in this._groups)) {
+			throw new Error(`No group with id ${id} exists on this avatar`);
 		}
 
-		if (controlOrder.length !== Object.keys(this._controls).length) {
-			throw new Error("Control order is missing some control ids");
+		if (id === "default") {
+			throw new Error("The default group can not be removed");
 		}
 
-		this._controlOrder = controlOrder;
+		// append all controls from this group back to the default group
+		const group = this._groups[id];
+		group.controls.forEach(controlId => {
+			this._groups["default"].addControl(controlId);
+		});
+		delete this._groups[id];
 	}
 }
 
@@ -262,7 +363,7 @@ class Board extends EventEmitter {
 		this._avatars[avid] = new BoardAvatar({
 			name,
 			controls: {},
-			controlOrder: [],
+			groups: {},
 		});
 
 		await this._store();
@@ -366,17 +467,51 @@ class Board extends EventEmitter {
 			id: uuiv4(), // new random id 
 		});
 
-		this._avatars[avid].addControl(duplicatedControl, this._avatars[avid].getControlOrderedPosition(id) + 1);
+		const groupId = this._avatars[avid].getGroupForControl(id);
+		const groupPosition = this._avatars[avid].groups[groupId].getControlPosition(id);
+
+		this._avatars[avid].addControl(duplicatedControl, groupId, groupPosition + 1);
 
 		await this._store();
 	}
 
-	async setControlOrder(avid, controlOrder) {
+	async setGroupControlOrder(avid, groupId, controlOrder) {
 		if (!this.hasAvatar(avid)) {
 			throw new Error("Invalid avatar id");
 		}
 
-		this._avatars[avid].setControlOrder(controlOrder);
+		if (!(groupId in this._avatars[avid].groups)) {
+			throw new Error("Invalid group id");
+		}
+
+		const group = this._avatars[avid].groups[groupId];
+		group.setControlOrder(controlOrder);
+
+		await this._store();
+	}
+
+	async createGroup(avid, name) {
+		if (!this.hasAvatar(avid)) {
+			throw new Error("Invalid avatar id");
+		}
+
+		const groupId = this._avatars[avid].createGroup(name);
+
+		await this._store();
+
+		return groupId;
+	}
+
+	async removeGroup(avid, id) {
+		if (!this.hasAvatar(avid)) {
+			throw new Error("Invalid avatar id");
+		}
+
+		if (!(groupId in this._avatars[avid].groups)) {
+			throw new Error("Invalid group id");
+		}
+
+		this._avatars[avid].removeGroup(id);
 
 		await this._store();
 	}
