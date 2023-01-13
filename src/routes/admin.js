@@ -267,25 +267,125 @@ adminRouter.put("/b/:board/a/:avatarId/p/:controlId",
 	}
 );
 
-// TODO: remove
-// adminRouter.put("/b/:board/a/:avatarId/control-order",
-// 	processRequest({
-// 		body: z.object({
-// 			order: z.array(z.string()),
-// 		})
-// 	}),
-// 	requireBoard("board", boardManager),
-// 	async function(req, res) {
-// 		try {
-// 			await req.board.setControlOrder(req.params.avatarId, req.body.order);
-// 		} catch(err) {
-// 			err.statusCode = 400;
-// 			throw err;
-// 		}
+adminRouter.put("/b/:board/a/:avatarId/p/:controlId/group",
+	requireBoard("board", boardManager),
+	processRequest({
+		body: z.object({
+			groupId: z.string(),
+			position: z.number().int().nullable(),
+		})
+	}),
+	async function(req, res) {
+		try {
+			await req.board.setControlGroup(req.params.avatarId, req.params.controlId, req.body.groupId, req.body.position);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
 
-// 		return res.end();
-// 	}
-// );
+		return res.end();
+	}
+);
+
+adminRouter.post("/b/:board/a/:avatarId/create-group",
+	requireBoard("board", boardManager),
+	processRequest({
+		body: z.object({
+			group: z.object({
+				name: z.string(),
+			}),
+		})
+	}),
+	async function(req, res) {
+		let groupId;
+		try {
+			groupId = await req.board.createGroup({
+				avid: req.params.avatarId,
+				name: req.body.group.name,
+			});
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.json({ id: groupId });
+	}
+);
+
+adminRouter.delete("/b/:board/a/:avatarId/g/:groupId",
+	requireBoard("board", boardManager),
+	async function(req, res) {
+		try {
+			await req.board.removeGroup(req.params.avatarId, req.params.groupId);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.end();
+	}
+);
+
+adminRouter.put("/b/:board/a/:avatarId/g/:groupId",
+	requireBoard("board", boardManager),
+	processRequest({
+		body: z.object({
+			group: z.object({
+				name: z.string(),
+			}),
+		})
+	}),
+	async function(req, res) {
+		try {
+			await req.board.updateGroup(req.params.avatarId, req.params.groupId, {
+				name: req.body.group.name,
+			});
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.end();
+	}
+);
+
+adminRouter.put("/b/:board/a/:avatarId/g/:groupId/control-order",
+	requireBoard("board", boardManager),
+	processRequest({
+		body: z.object({
+			order: z.array(z.string()),
+		})
+	}),
+	async function(req, res) {
+		try {
+			await req.board.setGroupControlOrder(req.params.avatarId, req.params.groupId, req.body.order);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.end();
+	}
+);
+
+adminRouter.put("/b/:board/a/:avatarId/group-order",
+	processRequest({
+		body: z.object({
+			order: z.array(z.string()),
+		})
+	}),
+	requireBoard("board", boardManager),
+	async function(req, res) {
+		try {
+			await req.board.setGroupOrder(req.params.avatarId, req.body.order);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		return res.end();
+	}
+);
 
 // TODO: add group specific endpoints
 

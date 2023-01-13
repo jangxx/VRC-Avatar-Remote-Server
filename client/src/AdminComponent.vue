@@ -1,6 +1,5 @@
 <template>
-	<div>
-		<n-config-provider :theme="darkTheme">
+	<n-config-provider :theme="darkTheme">
 		<n-h1>VRC Remote Admin</n-h1>
 
 		<n-collapse>
@@ -35,7 +34,9 @@
 
 		<n-divider />
 
-		<n-select :on-update:value="changeBoard" :value="currentBoard" :options="boardSelectOptions" placeholder="Select board"></n-select>
+		<n-form-item label="Select board" :show-feedback="false">
+			<n-select :on-update:value="changeBoard" :value="currentBoard" :options="boardSelectOptions" placeholder="Select board"></n-select>
+		</n-form-item>
 
 		<div class="spacer"></div>
 
@@ -132,7 +133,9 @@
 
 			<n-divider />
 
-			<n-select :on-update:value="changeAvatar" :value="currentAvatar" :options="avatarSelectOptions" placeholder="Select avatar" v-if="avatarSelectOptions.length > 0"></n-select>
+			<n-form-item label="Select avatar" :show-feedback="false">
+				<n-select :on-update:value="changeAvatar" :value="currentAvatar" :options="avatarSelectOptions" placeholder="Select avatar" v-if="avatarSelectOptions.length > 0"></n-select>
+			</n-form-item>
 
 			<template v-if="currentAvatar !== null">
 				<div class="spacer"></div>
@@ -211,49 +214,133 @@
 					<n-divider />
 				</template>
 
+				<n-space justify="space-between" align="center" style="margin-bottom: 20px">
+					<n-h2 style="margin-bottom: 0px">Control groups</n-h2>
+					<n-space>
+						<n-button
+							v-if="currentGroupLayoutModified"
+							type="info"
+							:loading="buttonLoading.has('save-order')"
+							@click="saveControlLayout()"
+						>
+							Save layout
+						</n-button>
+
+						<n-button
+							v-if="currentGroupLayoutModified"
+							@click="resetGroupControlLayout()"
+						>
+							Reset layout
+						</n-button>
+
+						<n-button type="primary" @click="openCreateGroupModal">
+							<template #icon>
+								<n-icon>
+									<IconPlus />
+								</n-icon>
+							</template>
+							Create group
+						</n-button>
+					</n-space>
+				</n-space>
+
 				<draggable
 					v-if="currentAvatarData !== null"
-					:list="currentAvatarControlsSorted"
+					:list="currentAvatarGroupsSorted"
 					:animation="200"
 					item-key="id"
-					handle=".handle"
-					@start="handleDragStart"
-					@end="handleDragEnd"
+					handle=".group-handle"
+					@end="handleGroupDragEnd"
 				>
-					<template #item="{element: control}">
-						<control-settings
-							v-model="this.currentAvatarData.controls[control.id]"
-							@update="updateBoards()"
-							@error="showError"
-							:input-parameter="currentAvatarParams[control.parameterName].input"
-							:output-parameter="currentAvatarParams[control.parameterName].output"
-							:board-id="currentBoard"
-							:avatar-id="currentAvatar"
-							:icons="icons"
-						/>
+					<template #item="{element: group}">
+						<div class="group">
+							<div class="group-header">
+								<div class="group-handle">
+									<n-icon size="20">
+										<icon-grip-horz />
+									</n-icon>
+								</div>
+								<div class="group-collapse" @click="collapsedGroups.has(group.id) ? collapsedGroups.delete(group.id) : collapsedGroups.add(group.id)">
+									<n-icon size="20">
+										<icon-collapsed v-if="collapsedGroups.has(group.id)" />
+										<icon-opened v-else />
+									</n-icon>
+								</div>
+								<div class="group-title">
+									<span v-if="group.id == 'default'">Default Group</span>
+									<span v-else-if="group.name == null">Unnamed Group</span>
+									<span v-else>{{ group.name }}</span>
+								</div>
+							</div>
+
+							<n-collapse-transition :show="!collapsedGroups.has(group.id)">
+								<n-card class="group-settings-card">
+									<n-space>
+										<n-button>Rename group</n-button>
+										<n-button type="error">Delete group</n-button>
+									</n-space>
+								</n-card>
+
+								<draggable
+									:list="currentAvatarGroupControlsSorted[group.id]"
+									:animation="200"
+									item-key="id"
+									handle=".control-handle"
+									@end="handleControlDragEnd"
+									class="group-content"
+								>
+									<template #item="{element: control}">
+										<control-settings
+											v-model="this.currentAvatarData.controls[control.id]"
+											@update="updateBoards()"
+											@error="showError"
+											:input-parameter="currentAvatarParams[control.parameterName].input"
+											:output-parameter="currentAvatarParams[control.parameterName].output"
+											:board-id="currentBoard"
+											:avatar-id="currentAvatar"
+											:icons="icons"
+										/>
+									</template>
+								</draggable>
+							</n-collapse-transition>
+						</div>
 					</template>
 				</draggable>
-				
-				<n-space v-if="controlOrder !== null">
-					<n-button
-						type="info"
-						:loading="buttonLoading.has('save-order')"
-						@click="saveControlOrder()"
-					>Save control order</n-button>
-					<n-button @click="controlOrder = null">Reset control order</n-button>
-				</n-space>
 			</template>
 
 			<div class="spacer"></div>
 		</template>
-		</n-config-provider>
-	</div>
+
+		<n-modal
+			v-model:show="createGroupModalVisible"
+			preset="card"
+			title="Create group"
+			style="max-width: 600px"
+		>
+			<n-form>
+				<n-form-item label="Name">
+					<n-input v-model:value="currentGroup.name" placeholder="Name of the group" />
+				</n-form-item>
+			</n-form>
+			<template #footer>
+				<n-space justify="end">
+					<n-button type="error" @click="createGroupModalVisible = false">
+						Cancel
+					</n-button>
+					<n-button type="primary" @click="addGroup()" :loading="currentGroup.loading">
+						Save
+					</n-button>
+				</n-space>
+			</template>
+		</n-modal>
+
+	</n-config-provider>
 </template>
 
 <script>
 import axios from "axios";
 import { darkTheme, NText, useMessage } from "naive-ui";
-import { Plus, Trash, ExclamationCircle } from "@vicons/fa";
+import { Plus, Trash, ExclamationCircle, GripLines, CaretDown, CaretRight } from "@vicons/fa";
 
 import draggable from "vuedraggable";
 
@@ -268,6 +355,9 @@ export default {
 		IconPlus: Plus,
 		IconTrash: Trash,
 		IconExclamationCircle: ExclamationCircle,
+		IconGripHorz: GripLines,
+		IconCollapsed: CaretRight,
+		IconOpened: CaretDown,
 	},
 	expose: [ "updateBoards" ],
 	setup() {
@@ -285,8 +375,8 @@ export default {
 			currentBoardData: {},
 			currentAvatar: null,
 			droppedAvatar: null,
-			controlOrder: null,
 			buttonLoading: new Set(),
+			collapsedGroups: new Set(),
 			currentParameterControl: { // is reset in openAvatarFile
 				label: "",
 				selectedParameter: null,
@@ -294,6 +384,13 @@ export default {
 				defaultValue: null,
 				setValue: null,
 			},
+			currentGroup: {
+				name: "",
+				loading: false,
+			},
+			currentGroupControlLayout: [],
+			currentGroupLayoutModified: false,
+			createGroupModalVisible: false,
 		}
 	},
 	watch: {
@@ -428,14 +525,25 @@ export default {
 
 			return this.currentBoardData.avatars[this.currentAvatar];
 		},
-		currentAvatarControlsSorted() {
+		currentAvatarGroupsSorted() {
 			if (this.currentAvatarData === null) return [];
 
-			const controlOrder = (this.controlOrder !== null) ? this.controlOrder : this.currentAvatarData.controlOrder;
-
-			return controlOrder.filter(cid => cid in this.currentAvatarData.controls).map(control_id => {
-				return this.currentAvatarData.controls[control_id];
+			return this.currentGroupControlLayout.map(groupDesc => {
+				return { ...this.currentAvatarData.groups[groupDesc.id], id: groupDesc.id }; // insert id into the group object
 			});
+		},
+		currentAvatarGroupControlsSorted() {
+			if (this.currentAvatarData === null) return {};
+
+			const entries = this.currentGroupControlLayout
+				.map(groupDesc => {
+					return [
+						groupDesc.id,
+						groupDesc.controls.map(cid => this.currentAvatarData.controls[cid] )
+					]
+				});
+
+			return Object.fromEntries(entries);
 		},
 		currentAvatarParams() {
 			if (!(this.currentAvatar in this.registeredParams)) {
@@ -455,7 +563,10 @@ export default {
 
 			if (this.currentBoard !== null) {
 				this.currentBoardData = Object.assign({ newPassword: "" }, this.boards[this.currentBoard]);
-				this.controlOrder = null; // reset custom control order
+
+				if (this.currentAvatar !== null) {
+					this.resetGroupControlLayout();
+				}
 			}
 		},
 		async updateIcons() {
@@ -475,6 +586,20 @@ export default {
 				setValue: null,
 			};
 		},
+		resetGroupControlLayout() {
+			if (this.currentAvatarData === null) return;
+
+			this.currentGroupControlLayout = [];
+			this.currentGroupLayoutModified = false;
+
+			for (const groupId of this.currentAvatarData.groupOrder) {
+				const groupControls = {
+					id: groupId,
+					controls: [...this.currentAvatarData.groups[groupId].controls]
+				};
+				this.currentGroupControlLayout.push(groupControls);
+			}
+		},
 		changeBoard(boardId) {
 			this.currentBoard = boardId;
 			if (boardId !== null) {
@@ -484,7 +609,7 @@ export default {
 		},
 		changeAvatar(avatarId) {
 			this.currentAvatar = avatarId;
-			this.controlOrder = null; // reset control order
+			this.resetGroupControlLayout();
 		},
 		handleDroppedAvatar(avatarData) {
 			this.droppedAvatar = { error: null, data: null };
@@ -524,14 +649,31 @@ export default {
 				},
 				parameter: this.newControlSelectedParameter,
 			}).then(resp => {
-				if (this.controlOrder) {
-					this.controlOrder.push(resp.data.control.id);
-				}
+				// if (this.controlOrder) {
+				// 	this.controlOrder.push(resp.data.control.id);
+				// }
 				return this.updateBoards();
 			}).then(() => {
 				this.resetCurrentParameterControl();
 			}).catch(err => {
-				window.$message.error("Error while adding control:");
+				window.$message.error("Error while adding control: " + err.message);
+			});
+		},
+		addGroup() {
+			this.currentGroup.loading = true;
+
+			// TODO: save current layout first
+
+			axios.post(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/create-group`, {
+				group: {
+					name: this.currentGroup.name,
+				},
+			}).then(resp => {
+				return this.updateBoards();
+			}).catch(err => {
+				window.$message.error("Error while adding control: " + err.message);
+			}).finally(() => {
+				this.currentGroup.loading = false;
 			});
 		},
 		renameBoard() {
@@ -567,17 +709,19 @@ export default {
 				return this.updateBoards();
 			}).catch(err => {});
 		},
-		saveControlOrder() {
+		saveControlLayout() {
 			this.buttonLoading.add("save-order");
-			axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/control-order`, { order: this.controlOrder }).then(resp => {
-				return this.updateBoards();
-			}).then(() => {
-				this.controlOrder = null;
-			}).catch(err => {
-				window.$message.error("Error while saving control order");
-			}).finally(() => {
-				this.buttonLoading.delete("save-order");
-			});
+			// TODO
+
+			// axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/control-order`, { order: this.controlOrder }).then(resp => {
+			// 	return this.updateBoards();
+			// }).then(() => {
+			// 	this.controlOrder = null;
+			// }).catch(err => {
+			// 	window.$message.error("Error while saving control order");
+			// }).finally(() => {
+			// 	this.buttonLoading.delete("save-order");
+			// });
 		},
 		deleteIcon(icon_id) {
 			axios.delete(`/api/admin/icon/${icon_id}`).then(resp => {
@@ -589,17 +733,29 @@ export default {
 				window.$message.error("Error while deleting icon");
 			});
 		},
-		handleDragStart() {
-			if (!this.controlOrder) {
-				this.controlOrder = [ ...this.currentAvatarData.controlOrder ];
-			}
+		openCreateGroupModal() {
+			this.currentGroup.name = "";
+			this.createGroupModalVisible = true;
 		},
-		handleDragEnd(evt) {
+		handleGroupDragEnd(evt) {
 			const { oldIndex, newIndex } = evt;
-			const moveId = this.controlOrder[oldIndex];
 
-			this.controlOrder.splice(oldIndex, 1);
-			this.controlOrder.splice(newIndex, 0, moveId);
+			this.currentGroupLayoutModified = true;
+
+			const moveGroup = this.currentGroupControlLayout.splice(oldIndex, 1);
+			this.currentGroupControlLayout.splice(newIndex, 0, moveGroup[0]);
+		},
+		// handleDragStart() {
+		// 	// if (!this.controlOrder) {
+		// 	// 	this.controlOrder = [ ...this.currentAvatarData.controlOrder ];
+		// 	// }
+		// },
+		handleControlDragEnd(evt) {
+			// const { oldIndex, newIndex } = evt;
+			// const moveId = this.controlOrder[oldIndex];
+
+			// this.controlOrder.splice(oldIndex, 1);
+			// this.controlOrder.splice(newIndex, 0, moveId);
 		},
 		showError(message) {
 			window.$message.error(message);
@@ -613,5 +769,54 @@ export default {
 </script>
 
 <style lang="scss">
+.group {
+	margin-bottom: 20px;
 
+	.group-header {
+		display: flex;
+		align-items: center;
+		margin-bottom: 15px;
+		padding-bottom: 5px;
+		border-bottom-style: solid;
+		border-bottom-color: #545454;
+		border-bottom-width: 1px;
+
+		.group-handle, .group-collapse {
+			background-color: #323232;
+			height: 100%;
+			width: 50px;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			margin-right: 10px;
+
+			&:hover {
+				background-color: #545454;
+			}
+		}
+		
+		.group-handle {
+			cursor: grab;
+
+			&:active {
+				cursor: grabbing;
+			}
+		}
+
+		.group-collapse {
+			cursor: pointer;
+		}
+
+		.group-title {
+			font-size: 1.5em;
+		}
+	}
+
+	.group-settings-card {
+		margin-bottom: 10px;
+	}
+
+	.group-content {
+	}
+}
 </style>

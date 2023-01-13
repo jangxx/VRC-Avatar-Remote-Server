@@ -1,6 +1,6 @@
 <template>
 	<n-card :key="control.id" class="control-card">
-		<div class="handle">
+		<div class="control-handle">
 			<n-icon size="20">
 				<icon-grip />
 			</n-icon>
@@ -176,7 +176,7 @@ export default {
 	padding-left: 30px;
 	margin-bottom: 10px;
 
-	.handle {
+	.control-handle {
 		position: absolute;
 		left: 0px;
 		top: 0px;
