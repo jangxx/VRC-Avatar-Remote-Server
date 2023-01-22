@@ -118,7 +118,7 @@ class BoardAvatarGroup {
 
 	setControlOrder(order) {
 		// first verify that order only contains valid control ids
-		if (order.length != this._controls.length || (new Set(this._controls.concat(order))).size() != this._controls.length) {
+		if (order.length != this._controls.length || new Set(this._controls.concat(order)).size != this._controls.length) {
 			throw new Error("Order definition is not valid (ids don't match the ones currently in the group");
 		}
 
@@ -190,8 +190,8 @@ class BoardAvatar {
 	}
 
 	getGroupForControl(id) {
-		if (!(control.id in this._controls)) {
-			throw new Error(`No control with id ${control.id} exists on this avatar`);
+		if (!(id in this._controls)) {
+			throw new Error(`No control with id ${id} exists on this avatar`);
 		}
 		return this._controlGroups[id];
 	}
@@ -290,7 +290,7 @@ class BoardAvatar {
 		// first verify that order only contains valid group ids
 		const groupIds = Object.keys(this._groups);
 
-		if (order.length != groupIds.length || (new Set(groupIds.concat(order))).size() != groupIds.length) {
+		if (order.length != groupIds.length || new Set(groupIds.concat(order)).size != groupIds.length) {
 			throw new Error("Order definition is not valid (ids don't match the ones currently on the avatar");
 		}
 
@@ -583,7 +583,7 @@ class Board extends EventEmitter {
 			throw new Error("Invalid avatar id");
 		}
 
-		if (!(groupId in this._avatars[avid].groups)) {
+		if (!(id in this._avatars[avid].groups)) {
 			throw new Error("Invalid group id");
 		}
 

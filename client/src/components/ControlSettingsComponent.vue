@@ -1,6 +1,6 @@
 <template>
-	<n-card :key="control.id" class="control-card">
-		<div class="control-handle">
+	<n-card :key="control.id" class="control-card" :class="{ 'layout-editable': layoutEditMode }">
+		<div class="control-handle" v-if="layoutEditMode">
 			<n-icon size="20">
 				<icon-grip />
 			</n-icon>
@@ -57,25 +57,37 @@
 						</n-gi>
 						<n-gi span="2">
 							<n-form-item v-if="control.controlType != 'range'" label="Default value">
-								<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.defaultValue" size="small" round />
-								<n-checkbox v-else v-model:checked="control.defaultValue" />
+								<n-input-number
+									v-if="control.dataType == 'float' || control.dataType == 'int'"
+									v-model:value="control.defaultValue"
+									:disabled="layoutEditMode"
+									size="small"
+									round
+								/>
+								<n-checkbox v-else v-model:checked="control.defaultValue" :disabled="layoutEditMode" />
 							</n-form-item>
 						</n-gi>
 						<n-gi span="2">
 							<n-form-item v-if="control.controlType != 'range'" label="Set value">
-								<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.setValue" size="small" round />
-								<n-checkbox v-else v-model:checked="control.setValue" />
+								<n-input-number
+									v-if="control.dataType == 'float' || control.dataType == 'int'"
+									v-model:value="control.setValue"
+									:disabled="layoutEditMode"
+									size="small"
+									round
+								/>
+								<n-checkbox v-else v-model:checked="control.setValue" :disabled="layoutEditMode" />
 							</n-form-item>
 						</n-gi>
 						<n-gi span="4">
 							<n-form-item label="Label">
-								<n-input size="small" v-model:value="control.label" />
+								<n-input size="small" v-model:value="control.label" :disabled="layoutEditMode" />
 							</n-form-item>
 						</n-gi>
 					</n-grid>
 				</n-gi>
 			</n-grid>
-			<n-space justify="end">
+			<n-space justify="end" v-if="!layoutEditMode">
 				<n-button :loading="duplicateButtonLoading" @click="duplicateParameterControl(control)">Duplicate</n-button>
 				<n-button secondary type="primary" :loading="updateButtonLoading" @click="updateParameterControl(control)">Save</n-button>
 				<n-popconfirm @positive-click="deleteParameterControl(control.id)">
@@ -109,6 +121,7 @@ export default {
 		outputParameter: String,
 		modelValue: Object,
 		icons: Array,
+		layoutEditMode: Boolean,
 	},
 	data() {
 		return {
@@ -173,8 +186,11 @@ export default {
 <style lang="scss">
 .control-card {
 	position: relative;
-	padding-left: 30px;
 	margin-bottom: 10px;
+
+	&.layout-editable {
+		padding-left: 30px;
+	}
 
 	.control-handle {
 		position: absolute;

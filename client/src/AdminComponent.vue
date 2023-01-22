@@ -218,7 +218,20 @@
 					<n-h2 style="margin-bottom: 0px">Control groups</n-h2>
 					<n-space>
 						<n-button
-							v-if="currentGroupLayoutModified"
+							v-if="!groupLayoutEditable"
+							type="info"
+							@click="groupLayoutEditable = true"
+						>
+							<template #icon>
+								<n-icon>
+									<IconOrder />
+								</n-icon>
+							</template>
+							Edit layout
+						</n-button>
+
+						<n-button
+							v-if="groupLayoutEditable"
 							type="info"
 							:loading="buttonLoading.has('save-order')"
 							@click="saveControlLayout()"
@@ -227,13 +240,13 @@
 						</n-button>
 
 						<n-button
-							v-if="currentGroupLayoutModified"
-							@click="resetGroupControlLayout()"
+							v-if="groupLayoutEditable"
+							@click="resetGroupControlLayout(); groupLayoutEditable = false"
 						>
 							Reset layout
 						</n-button>
 
-						<n-button type="primary" @click="openCreateGroupModal">
+						<n-button type="primary" @click="openCreateGroupModal" :disabled="groupLayoutEditable">
 							<template #icon>
 								<n-icon>
 									<IconPlus />
@@ -251,11 +264,12 @@
 					item-key="id"
 					handle=".group-handle"
 					@end="handleGroupDragEnd"
+					:disabled="!groupLayoutEditable"
 				>
 					<template #item="{element: group}">
 						<div class="group">
 							<div class="group-header">
-								<div class="group-handle">
+								<div class="group-handle" v-if="groupLayoutEditable">
 									<n-icon size="20">
 										<icon-grip-horz />
 									</n-icon>
@@ -268,16 +282,27 @@
 								</div>
 								<div class="group-title">
 									<span v-if="group.id == 'default'">Default Group</span>
-									<span v-else-if="group.name == null">Unnamed Group</span>
+									<span v-else-if="group.name == null || group.name.length == 0">Unnamed Group</span>
 									<span v-else>{{ group.name }}</span>
 								</div>
 							</div>
 
 							<n-collapse-transition :show="!collapsedGroups.has(group.id)">
-								<n-card class="group-settings-card">
+								<n-card class="group-settings-card" v-if="!groupLayoutEditable && group.id != 'default'">
 									<n-space>
-										<n-button>Rename group</n-button>
-										<n-button type="error">Delete group</n-button>
+										<n-button @click="editGroupDialog(group.id)">Edit group</n-button>
+
+										<n-popconfirm @positive-click="deleteGroup(group.id)">
+											<template #icon>
+												<n-icon color="red">
+													<IconExclamationCircle />
+												</n-icon>
+											</template>
+											<template #trigger>
+												<n-button type="error" :loading="buttonLoading.has(`delete-group-${group.id}`)">Delete group</n-button>
+											</template>
+											Are you sure you want to delete this group? All its controls will be moved back into the default group.
+										</n-popconfirm>
 									</n-space>
 								</n-card>
 
@@ -286,8 +311,11 @@
 									:animation="200"
 									item-key="id"
 									handle=".control-handle"
+									group="movable-controls"
 									@end="handleControlDragEnd"
 									class="group-content"
+									:disabled="!groupLayoutEditable"
+									:data-group-id="group.id"
 								>
 									<template #item="{element: control}">
 										<control-settings
@@ -299,6 +327,7 @@
 											:board-id="currentBoard"
 											:avatar-id="currentAvatar"
 											:icons="icons"
+											:layout-edit-mode="groupLayoutEditable"
 										/>
 									</template>
 								</draggable>
@@ -334,13 +363,36 @@
 			</template>
 		</n-modal>
 
+		<n-modal
+			v-model:show="editGroupModalVisible"
+			preset="card"
+			title="Edit group"
+			style="max-width: 600px"
+		>
+			<n-form>
+				<n-form-item label="Name">
+					<n-input v-model:value="currentGroup.name" placeholder="Name of the group" />
+				</n-form-item>
+			</n-form>
+			<template #footer>
+				<n-space justify="end">
+					<n-button type="error" @click="editGroupModalVisible = false">
+						Cancel
+					</n-button>
+					<n-button type="primary" @click="updateCurrentGroup()" :loading="currentGroup.loading">
+						Save
+					</n-button>
+				</n-space>
+			</template>
+		</n-modal>
+
 	</n-config-provider>
 </template>
 
 <script>
 import axios from "axios";
 import { darkTheme, NText, useMessage } from "naive-ui";
-import { Plus, Trash, ExclamationCircle, GripLines, CaretDown, CaretRight } from "@vicons/fa";
+import { Plus, Trash, ExclamationCircle, GripLines, CaretDown, CaretRight, ListOl } from "@vicons/fa";
 
 import draggable from "vuedraggable";
 
@@ -358,6 +410,7 @@ export default {
 		IconGripHorz: GripLines,
 		IconCollapsed: CaretRight,
 		IconOpened: CaretDown,
+		IconOrder: ListOl,
 	},
 	expose: [ "updateBoards" ],
 	setup() {
@@ -386,11 +439,13 @@ export default {
 			},
 			currentGroup: {
 				name: "",
+				id: null,
 				loading: false,
 			},
 			currentGroupControlLayout: [],
-			currentGroupLayoutModified: false,
+			groupLayoutEditable: false,
 			createGroupModalVisible: false,
+			editGroupModalVisible: false,
 		}
 	},
 	watch: {
@@ -590,7 +645,6 @@ export default {
 			if (this.currentAvatarData === null) return;
 
 			this.currentGroupControlLayout = [];
-			this.currentGroupLayoutModified = false;
 
 			for (const groupId of this.currentAvatarData.groupOrder) {
 				const groupControls = {
@@ -662,16 +716,56 @@ export default {
 		addGroup() {
 			this.currentGroup.loading = true;
 
-			// TODO: save current layout first
-
 			axios.post(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/create-group`, {
 				group: {
 					name: this.currentGroup.name,
 				},
 			}).then(resp => {
 				return this.updateBoards();
+			}).then(() => {
+				this.createGroupModalVisible = false;
 			}).catch(err => {
-				window.$message.error("Error while adding control: " + err.message);
+				window.$message.error("Error while adding group: " + err.message);
+			}).finally(() => {
+				this.currentGroup.loading = false;
+			});
+		},
+		deleteGroup(id) {
+			this.buttonLoading.add(`delete-group-${id}`);
+
+			axios.delete(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/g/${id}`).then(resp => {
+				return this.updateBoards();
+			}).catch(err => {
+				window.$message.error("Error while deleting group: " + err.message);
+			}).finally(() => {
+				this.buttonLoading.delete(`delete-group-${id}`)
+			});
+		},
+		editGroupDialog(id) {
+			if (!this.currentAvatarData) return;
+
+			const groupData = this.currentAvatarData.groups[id];
+
+			if (!groupData) return;
+
+			this.currentGroup.id = id;
+			this.currentGroup.name = groupData.name;
+
+			this.editGroupModalVisible = true;
+		},
+		updateCurrentGroup() {
+			this.currentGroup.loading = true;
+
+			axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/g/${this.currentGroup.id}`, {
+				group: {
+					name: this.currentGroup.name,
+				}
+			}).then(resp => {
+				return this.updateBoards();
+			}).then(() => {
+				this.editGroupModalVisible = false;
+			}).catch(err => {
+				window.$message.error("Error while saving group: " + err.message);
 			}).finally(() => {
 				this.currentGroup.loading = false;
 			});
@@ -709,19 +803,57 @@ export default {
 				return this.updateBoards();
 			}).catch(err => {});
 		},
-		saveControlLayout() {
+		async saveControlLayout() {
 			this.buttonLoading.add("save-order");
-			// TODO
+			
+			const controlGroupChanges = [];
 
-			// axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/control-order`, { order: this.controlOrder }).then(resp => {
-			// 	return this.updateBoards();
-			// }).then(() => {
-			// 	this.controlOrder = null;
-			// }).catch(err => {
-			// 	window.$message.error("Error while saving control order");
-			// }).finally(() => {
-			// 	this.buttonLoading.delete("save-order");
-			// });
+			// turn the layout into a hashed object for faster lookups
+			const controlToGroupMap = {};
+			for (const groupDesc of this.currentGroupControlLayout) {
+				for (const controlId of groupDesc.controls) {
+					controlToGroupMap[controlId] = groupDesc.id;
+				}
+			}
+
+			// figure out the differences between the current layout and the one on the server
+			for (const groupId of this.currentAvatarData.groupOrder) {
+				for (const controlId of this.currentAvatarData.groups[groupId].controls) {
+					if (controlToGroupMap[controlId] != groupId) {
+						controlGroupChanges.push({
+							controlId,
+							groupId: controlToGroupMap[controlId],
+						})
+					}
+				}
+			}
+
+			try {
+				// perform the moves first
+				await Promise.all(controlGroupChanges.map(change => {
+					return axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/p/${change.controlId}/group`, {
+						groupId: change.groupId,
+						position: null, // the position will be set with the control order update
+					});
+				}));
+
+				// update control orders
+				await Promise.all(this.currentGroupControlLayout.map(groupDesc => {
+					return axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/g/${groupDesc.id}/control-order`, { order: groupDesc.controls });
+				}));
+
+				// finally update group order itself
+				await axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/group-order`, { order: this.currentGroupControlLayout.map(g => g.id) });
+
+				// get the updated data from the server to ensure consistency
+				await this.updateBoards();
+
+				this.groupLayoutEditable = false;
+			} catch(err) {
+				window.$message.error("Error while saving layout");
+			} finally {
+				this.buttonLoading.delete("save-order");
+			}
 		},
 		deleteIcon(icon_id) {
 			axios.delete(`/api/admin/icon/${icon_id}`).then(resp => {
@@ -740,8 +872,6 @@ export default {
 		handleGroupDragEnd(evt) {
 			const { oldIndex, newIndex } = evt;
 
-			this.currentGroupLayoutModified = true;
-
 			const moveGroup = this.currentGroupControlLayout.splice(oldIndex, 1);
 			this.currentGroupControlLayout.splice(newIndex, 0, moveGroup[0]);
 		},
@@ -751,11 +881,19 @@ export default {
 		// 	// }
 		// },
 		handleControlDragEnd(evt) {
-			// const { oldIndex, newIndex } = evt;
-			// const moveId = this.controlOrder[oldIndex];
+			const { oldIndex, newIndex } = evt;
+			const fromGroup = evt.from.dataset.groupId;
+			const toGroup = evt.to.dataset.groupId;
 
-			// this.controlOrder.splice(oldIndex, 1);
-			// this.controlOrder.splice(newIndex, 0, moveId);
+			const srcGroupDesc = this.currentGroupControlLayout.find(group => group.id == fromGroup);
+			const dstGroupDesc = this.currentGroupControlLayout.find(group => group.id == toGroup);
+			
+			if (srcGroupDesc == null || dstGroupDesc == null) return;
+
+			const moveId = srcGroupDesc.controls[oldIndex];
+
+			srcGroupDesc.controls.splice(oldIndex, 1);
+			dstGroupDesc.controls.splice(newIndex, 0, moveId);
 		},
 		showError(message) {
 			window.$message.error(message);

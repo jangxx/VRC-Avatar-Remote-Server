@@ -387,8 +387,6 @@ adminRouter.put("/b/:board/a/:avatarId/group-order",
 	}
 );
 
-// TODO: add group specific endpoints
-
 adminRouter.post("/b/:board/a/:avatarId/duplicate-control",
 	processRequest({
 		body: z.object({
