@@ -54,6 +54,8 @@ class VrcAvatarManager extends EventEmitter {
 				this._currentAvatar.id = avatarId;
 				this._currentAvatar.params = {};
 
+				console.log(`Changed avatar to ${avatarId}`)
+
 				if (avatarId in this._avatars) {
 					this._inputParams = Object.fromEntries(Object.entries(this._avatars[avatarId]).map(e => [ e[1].input, e[0] ]));
 				} else {
