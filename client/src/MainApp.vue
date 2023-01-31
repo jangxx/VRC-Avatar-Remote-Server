@@ -109,7 +109,7 @@ export default {
 
       return this.currentAvatar.groupOrder.map(groupId => {
         return { ...this.currentAvatar.groups[groupId], id: groupId };
-      });
+      }).filter(group => group.controls.length > 0);
     },
   },
   watch: {

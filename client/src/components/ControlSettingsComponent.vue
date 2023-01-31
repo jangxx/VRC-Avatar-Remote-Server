@@ -5,7 +5,26 @@
 				<icon-grip />
 			</n-icon>
 		</div>
-		<n-form>
+		<n-grid :cols="6" x-gap="12" v-if="layoutEditMode">
+			<n-gi>
+				<n-space :vertical="true" align="stretch">
+					<n-space v-if="control.icon !== null" justify="center">
+						<n-image width="64" height="64" :src="'/i/' + control.icon" :preview-disabled="true" />
+					</n-space>
+					<n-empty v-else description="No icon set" size="small">
+						<template #icon>
+							<n-icon>
+								<IconImage />
+							</n-icon>
+						</template>
+					</n-empty>
+				</n-space>
+			</n-gi>
+			<n-gi :span="5">
+				<n-text>{{ control.label }}</n-text>
+			</n-gi>
+		</n-grid>
+		<n-form v-if="!layoutEditMode">
 			<n-grid :cols="6" x-gap="12">
 				<n-gi>
 					<n-space :vertical="true" align="stretch">
@@ -60,11 +79,10 @@
 								<n-input-number
 									v-if="control.dataType == 'float' || control.dataType == 'int'"
 									v-model:value="control.defaultValue"
-									:disabled="layoutEditMode"
 									size="small"
 									round
 								/>
-								<n-checkbox v-else v-model:checked="control.defaultValue" :disabled="layoutEditMode" />
+								<n-checkbox v-else v-model:checked="control.defaultValue" />
 							</n-form-item>
 						</n-gi>
 						<n-gi span="2">
@@ -72,22 +90,21 @@
 								<n-input-number
 									v-if="control.dataType == 'float' || control.dataType == 'int'"
 									v-model:value="control.setValue"
-									:disabled="layoutEditMode"
 									size="small"
 									round
 								/>
-								<n-checkbox v-else v-model:checked="control.setValue" :disabled="layoutEditMode" />
+								<n-checkbox v-else v-model:checked="control.setValue" />
 							</n-form-item>
 						</n-gi>
 						<n-gi span="4">
 							<n-form-item label="Label">
-								<n-input size="small" v-model:value="control.label" :disabled="layoutEditMode" />
+								<n-input size="small" v-model:value="control.label" />
 							</n-form-item>
 						</n-gi>
 					</n-grid>
 				</n-gi>
 			</n-grid>
-			<n-space justify="end" v-if="!layoutEditMode">
+			<n-space justify="end">
 				<n-button :loading="duplicateButtonLoading" @click="duplicateParameterControl(control)">Duplicate</n-button>
 				<n-button secondary type="primary" :loading="updateButtonLoading" @click="updateParameterControl(control)">Save</n-button>
 				<n-popconfirm @positive-click="deleteParameterControl(control.id)">

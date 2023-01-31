@@ -830,17 +830,17 @@ export default {
 
 			try {
 				// perform the moves first
-				await Promise.all(controlGroupChanges.map(change => {
-					return axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/p/${change.controlId}/group`, {
+				for (const change of controlGroupChanges) {
+					await axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/p/${change.controlId}/group`, {
 						groupId: change.groupId,
 						position: null, // the position will be set with the control order update
 					});
-				}));
+				}
 
 				// update control orders
-				await Promise.all(this.currentGroupControlLayout.map(groupDesc => {
-					return axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/g/${groupDesc.id}/control-order`, { order: groupDesc.controls });
-				}));
+				for (const groupDesc of this.currentGroupControlLayout) {
+					await axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/g/${groupDesc.id}/control-order`, { order: groupDesc.controls });
+				}
 
 				// finally update group order itself
 				await axios.put(`/api/admin/b/${this.currentBoard}/a/${this.currentAvatar}/group-order`, { order: this.currentGroupControlLayout.map(g => g.id) });
