@@ -15,6 +15,8 @@ class BoardManager {
 		this._iconManager = iconManager;
 		this._avatarManager = avatarManager;
 		this._socketManager = null; // has to be registered by the socketmanager to avoid the circular dependency
+
+		this._locks = new Set();
 	}
 
 	_handleBoardUpdate(board_id) {
@@ -73,7 +75,9 @@ class BoardManager {
 		await this._config.setKey("defaultBoard", board_id);
 	}
 
-	getBoard(id, verifyMode=false) {
+	getBoard(id, opts = { verifyMode: false, locked: false }) {
+		opts = Object.assign({ verifyMode: false, locked: false }, opts);
+
 		if (!this.boardExists(id)) {
 			throw new Error("This board doesn't exist");
 		}
@@ -82,14 +86,28 @@ class BoardManager {
 			id = this.getDefaultBoardId();
 		}
 
+		// if (opts.locked && this._locks.has(id)) {
+		// 	throw new Error(`Board ${id} is currently locked`);
+		// }
+
+		if (opts.locked) {
+			this._locks.add(id);
+		}
+
 		const board = new Board(id, this._config, this._avatarManager, this._iconManager);
-		board._load(verifyMode);
+		board._load(opts.verifyMode);
 
 		board.on("store-config", () => {
 			this._handleBoardUpdate(board.id);
 		});
 
 		return board;
+	}
+
+	unlockBoard(id) {
+		if (this._locks.has(id)) {
+			this._locks.delete(id);
+		}
 	}
 
 	async deleteBoard(id) {
@@ -114,7 +132,7 @@ class BoardManager {
 	tryLoadingAllBoards() {
 		for (let boardId of this.getAllBoardIds()) {
 			console.log(`Validating board ${boardId}`);
-			this.getBoard(boardId, true);
+			this.getBoard(boardId, { verifyMode: true });
 		}
 	}
 
@@ -129,7 +147,9 @@ class BoardManager {
 	}
 }
 
-function requireBoard(paramName, boardManager) {
+function requireBoard(paramName, boardManager, opts = { locked: false }) {
+	opts = Object.assign({ locked: false }, opts);
+
 	return function(req, res, next) {
 		if (!(paramName in req.params)) {
 			console.error(`${paramName} missing from req.params?`);
@@ -144,9 +164,31 @@ function requireBoard(paramName, boardManager) {
 			return next(err);
 		}
 
-		req.board = boardManager.getBoard(req.params[paramName]);
-		return next();
+		req.board = boardManager.getBoard(req.params[paramName], { locked: opts.locked });
+		req.boardLocked = opts.locked;
+
+		next();
 	};
 }
 
-module.exports = { BoardManager, Board, requireBoard };
+function unlockRequiredBoard(boardManager) {
+	return function(req, res, next) {
+		if (req.board && req.boardLocked === true) {
+			boardManager.unlockBoard(req.board.id);
+			req.boardLocked = false;
+		}
+		next();
+	}
+}
+
+function unlockRequiredBoardOnError(boardManager) {
+	return function(err, req, res, next) {
+		if (req.board && req.boardLocked === true) {
+			boardManager.unlockBoard(req.board.id);
+			req.boardLocked = false;
+		}
+		next(err);
+	}
+}
+
+module.exports = { BoardManager, Board, requireBoard, unlockRequiredBoard, unlockRequiredBoardOnError };

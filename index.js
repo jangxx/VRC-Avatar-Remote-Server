@@ -15,7 +15,7 @@ const { Config } = require("./src/config");
 const ServiceManager = require("./src/service_manager");
 const { OscManager } = require("./src/osc_manager");
 const { VrcAvatarManager } = require("./src/vrc_avatar_manager");
-const { BoardManager } = require("./src/board_manager");
+const { BoardManager, unlockRequiredBoardOnError } = require("./src/board_manager");
 const { SocketManager } = require("./src/socket_manager");
 const { IconManager } = require("./src/icon_manager");
 const { ApiKeyAuthentication } = require("./src/api_key_auth");
@@ -252,6 +252,8 @@ async function main() {
 
 	app.use("/api/b/:board", boardRouter);
 	app.use("/api/admin", adminRouter);
+
+	app.use(unlockRequiredBoardOnError(boardManager));
 
 	const port = config.getRequiredKey("server", "port");
 	const address = config.getRequiredKey("server", "address");

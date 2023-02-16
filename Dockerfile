@@ -3,7 +3,7 @@ FROM node:16
 WORKDIR /usr/src/vrc-param-server
 
 COPY package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # copy everything over (except the dockerignore'd files)
 COPY . .

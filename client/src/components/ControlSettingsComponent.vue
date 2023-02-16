@@ -1,11 +1,30 @@
 <template>
-	<n-card :key="control.id" class="control-card">
-		<div class="handle">
+	<n-card :key="control.id" class="control-card" :class="{ 'layout-editable': layoutEditMode }">
+		<div class="control-handle" v-if="layoutEditMode">
 			<n-icon size="20">
 				<icon-grip />
 			</n-icon>
 		</div>
-		<n-form>
+		<n-grid :cols="6" x-gap="12" v-if="layoutEditMode">
+			<n-gi>
+				<n-space :vertical="true" align="stretch">
+					<n-space v-if="control.icon !== null" justify="center">
+						<n-image width="64" height="64" :src="'/i/' + control.icon" :preview-disabled="true" />
+					</n-space>
+					<n-empty v-else description="No icon set" size="small">
+						<template #icon>
+							<n-icon>
+								<IconImage />
+							</n-icon>
+						</template>
+					</n-empty>
+				</n-space>
+			</n-gi>
+			<n-gi :span="5">
+				<n-text>{{ control.label }}</n-text>
+			</n-gi>
+		</n-grid>
+		<n-form v-if="!layoutEditMode">
 			<n-grid :cols="6" x-gap="12">
 				<n-gi>
 					<n-space :vertical="true" align="stretch">
@@ -57,13 +76,23 @@
 						</n-gi>
 						<n-gi span="2">
 							<n-form-item v-if="control.controlType != 'range'" label="Default value">
-								<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.defaultValue" size="small" round />
+								<n-input-number
+									v-if="control.dataType == 'float' || control.dataType == 'int'"
+									v-model:value="control.defaultValue"
+									size="small"
+									round
+								/>
 								<n-checkbox v-else v-model:checked="control.defaultValue" />
 							</n-form-item>
 						</n-gi>
 						<n-gi span="2">
 							<n-form-item v-if="control.controlType != 'range'" label="Set value">
-								<n-input-number v-if="control.dataType == 'float' || control.dataType == 'int'" v-model:value="control.setValue" size="small" round />
+								<n-input-number
+									v-if="control.dataType == 'float' || control.dataType == 'int'"
+									v-model:value="control.setValue"
+									size="small"
+									round
+								/>
 								<n-checkbox v-else v-model:checked="control.setValue" />
 							</n-form-item>
 						</n-gi>
@@ -109,6 +138,7 @@ export default {
 		outputParameter: String,
 		modelValue: Object,
 		icons: Array,
+		layoutEditMode: Boolean,
 	},
 	data() {
 		return {
@@ -173,10 +203,13 @@ export default {
 <style lang="scss">
 .control-card {
 	position: relative;
-	padding-left: 30px;
 	margin-bottom: 10px;
 
-	.handle {
+	&.layout-editable {
+		padding-left: 30px;
+	}
+
+	.control-handle {
 		position: absolute;
 		left: 0px;
 		top: 0px;
