@@ -21,7 +21,7 @@ This readme documents how to do each of these options.
 
 1. Clone the repository
 2. `cd` into it
-3. Run `npm install` to install the required modules for the server
+3. Run `npm install --legacy-peer-deps` to install the required modules for the server
 4. `cd client`
 5. Run `npm install` to install the required modules for the frontend
 6. `npm run build` to build the frontend 
@@ -36,7 +36,7 @@ The second parameter is optional, since the path where the uploaded icons are st
 The first time you launch the server you are asked if you are currently running in a docker container.
 Answer this question with `n`.
 Afterwards you have to create an admin password.
-If you want to change it later you can either clear remove the `admin.password` key from the config file to summon the prompt again or go to a website like [bcrypt-generator.com](https://bcrypt-generator.com/) and "encrypt" your new password there before putting it into the config file.
+If you want to change it later you can either remove the `admin.password` key from the config file to summon the prompt again or go to a website like [bcrypt-generator.com](https://bcrypt-generator.com/) and "encrypt" your new password there before putting it into the config file.
 
 ## Running in a docker container
 

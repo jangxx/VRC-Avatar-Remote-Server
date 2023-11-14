@@ -5,7 +5,7 @@ const { processRequest } = require("zod-express-middleware");
 
 const { requireAdmin } = require("../require_login");
 const ServiceManager = require("../service_manager");
-const { requireBoard } = require("../board_manager");
+const { requireBoard, unlockRequiredBoard } = require("../board_manager");
 
 const adminRouter = express.Router({ mergeParams: true });
 const [ boardManager, avatarManager, iconManager ] = ServiceManager.getMultiple(["boardManager", "avatarManager", "iconManager"]);
@@ -87,71 +87,94 @@ adminRouter.post("/create-board", async function(req, res) {
 	});
 });
 
-adminRouter.delete("/b/:board", requireBoard("board", boardManager), async function(req, res) {
-	await boardManager.deleteBoard(req.board.id);
-	res.end();
-});
+adminRouter.delete("/b/:board",
+	requireBoard("board", boardManager, { locked: true }),
+	async function(req, res, next) {
+		await boardManager.deleteBoard(req.board.id);
+		res.end();
+		next();
+	},
+	unlockRequiredBoard(boardManager),
+);
 
-adminRouter.put("/b/:board/name", requireBoard("board", boardManager), async function(req, res) {
-	if (!("name" in req.body)) {
-		return res.sendStatus(400);
-	}
+adminRouter.put("/b/:board/name",
+	requireBoard("board", boardManager, { locked: true }),
+	async function(req, res, next) {
+		if (!("name" in req.body)) {
+			res.sendStatus(400);
+			return next();
+		}
 
-	try {
-		await req.board.setName(req.body.name);
-	} catch(err) {
-		err.statusCode = 400;
-		throw err;
-	}
-
-	return res.end();
-});
-
-adminRouter.put("/b/:board/password", requireBoard("board", boardManager), async function(req, res) {
-	if (!("password" in req.body)) {
-		return res.sendStatus(400);
-	}
-
-	try {
-		await req.board.setPassword(req.body.password);
-	} catch(err) {
-		err.statusCode = 400;
-		throw err;
-	}
-
-	return res.end();
-});
-
-adminRouter.put("/b/:board/default", requireBoard("board", boardManager), async function(req, res) {
-	if (!("default" in req.body)) {
-		return res.sendStatus(400);
-	}
-
-	const currentDefault = boardManager.getDefaultBoardId();
-
-	try {
-		if (req.body.default === true) {
-			await boardManager.setDefaultBoardId(req.board.id);
-		} else if  (req.body.default === false) {
-			if (currentDefault === req.board.id) { // if this is currently the default unset the default
-				await boardManager.setDefaultBoardId(null);
-			} else {
-				// otherwise we can't unset this board as the default
-				err.statusCode = 400;
-				throw err;
-			}
-		} else {
-			// invalid value
+		try {
+			await req.board.setName(req.body.name);
+		} catch(err) {
 			err.statusCode = 400;
 			throw err;
 		}
-	} catch(err) {
-		err.statusCode = 400;
-		throw err;
-	}
 
-	return res.end();
-});
+		res.end();
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
+);
+
+adminRouter.put("/b/:board/password",
+	requireBoard("board", boardManager, { locked: true }),
+	async function(req, res, next) {
+		if (!("password" in req.body)) {
+			res.sendStatus(400);
+			return next();
+		}
+
+		try {
+			await req.board.setPassword(req.body.password);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		res.end();
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
+);
+
+adminRouter.put("/b/:board/default",
+	requireBoard("board", boardManager, { locked: true }),
+	async function(req, res, next) {
+		if (!("default" in req.body)) {
+			res.sendStatus(400);
+			return next();
+		}
+
+		const currentDefault = boardManager.getDefaultBoardId();
+
+		try {
+			if (req.body.default === true) {
+				await boardManager.setDefaultBoardId(req.board.id);
+			} else if  (req.body.default === false) {
+				if (currentDefault === req.board.id) { // if this is currently the default unset the default
+					await boardManager.setDefaultBoardId(null);
+				} else {
+					// otherwise we can't unset this board as the default
+					err.statusCode = 400;
+					throw err;
+				}
+			} else {
+				// invalid value
+				err.statusCode = 400;
+				throw err;
+			}
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		res.end();
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
+);
 
 adminRouter.post("/b/:board/add-avatar",
 	requireBoard("board", boardManager),
@@ -163,7 +186,7 @@ adminRouter.post("/b/:board/add-avatar",
 			})
 		}),
 	}),
-	async function(req, res) {
+	async function(req, res, next) {
 		try {
 			await req.board.addAvatar(req.body.avatar.id, req.body.avatar.name);
 		} catch(err) {
@@ -171,12 +194,14 @@ adminRouter.post("/b/:board/add-avatar",
 			throw err;
 		}
 
-		return res.end();
-	}
+		res.end();
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
 );
 
 adminRouter.post("/b/:board/a/:avatarId/create-control", 
-	requireBoard("board", boardManager),
+	requireBoard("board", boardManager, { locked: true }),
 	processRequest({
 		body: z.object({
 			control: z.object({
@@ -193,7 +218,7 @@ adminRouter.post("/b/:board/a/:avatarId/create-control",
 			}),
 		})
 	}),
-	async function(req, res) {
+	async function(req, res, next) {
 		let control;
 		try {
 			control = await req.board.createControl({
@@ -210,25 +235,32 @@ adminRouter.post("/b/:board/a/:avatarId/create-control",
 			throw err;
 		}
 
-		return res.json({
+		res.json({
 			control: control.serialize(),
 		});
-	}
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
 );
 
-adminRouter.delete("/b/:board/a/:avatarId/p/:controlId", requireBoard("board", boardManager), async function(req, res) {
-	try {
-		await req.board.removeControl(req.params.avatarId, req.params.controlId);
-	} catch(err) {
-		err.statusCode = 400;
-		throw err;
-	}
+adminRouter.delete("/b/:board/a/:avatarId/p/:controlId",
+	requireBoard("board", boardManager, { locked: true }),
+	async function(req, res, next) {
+		try {
+			await req.board.removeControl(req.params.avatarId, req.params.controlId);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
 
-	return res.end();
-});
+		res.end();
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
+);
 
 adminRouter.put("/b/:board/a/:avatarId/p/:controlId",
-	requireBoard("board", boardManager),
+	requireBoard("board", boardManager, { locked: true }),
 	processRequest({
 		body: z.object({
 			control: z.object({
@@ -242,7 +274,7 @@ adminRouter.put("/b/:board/a/:avatarId/p/:controlId",
 			}),
 		}),
 	}),
-	async function(req, res) {
+	async function(req, res, next) {
 		let control;
 		try {
 			control = req.board.constructControl({
@@ -263,27 +295,142 @@ adminRouter.put("/b/:board/a/:avatarId/p/:controlId",
 			throw err;
 		}
 
-		return res.json({ control: control.serialize() });
-	}
+		res.json({ control: control.serialize() });
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
 );
 
-adminRouter.put("/b/:board/a/:avatarId/control-order",
+adminRouter.put("/b/:board/a/:avatarId/p/:controlId/group",
+	requireBoard("board", boardManager, { locked: true }),
 	processRequest({
 		body: z.object({
-			order: z.array(z.string()),
+			groupId: z.string(),
+			position: z.number().int().nullable(),
 		})
 	}),
-	requireBoard("board", boardManager),
-	async function(req, res) {
+	async function(req, res, next) {
 		try {
-			await req.board.setControlOrder(req.params.avatarId, req.body.order);
+			await req.board.setControlGroup(req.params.avatarId, req.params.controlId, req.body.groupId, req.body.position);
 		} catch(err) {
 			err.statusCode = 400;
 			throw err;
 		}
 
-		return res.end();
-	}
+		res.end();
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
+);
+
+adminRouter.post("/b/:board/a/:avatarId/create-group",
+	requireBoard("board", boardManager, { locked: true }),
+	processRequest({
+		body: z.object({
+			group: z.object({
+				name: z.string(),
+			}),
+		})
+	}),
+	async function(req, res, next) {
+		let groupId;
+		try {
+			groupId = await req.board.createGroup({
+				avid: req.params.avatarId,
+				name: req.body.group.name,
+			});
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		res.json({ id: groupId });
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
+);
+
+adminRouter.delete("/b/:board/a/:avatarId/g/:groupId",
+	requireBoard("board", boardManager, { locked: true }),
+	async function(req, res, next) {
+		try {
+			await req.board.removeGroup(req.params.avatarId, req.params.groupId);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		res.end();
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
+);
+
+adminRouter.put("/b/:board/a/:avatarId/g/:groupId",
+	requireBoard("board", boardManager, { locked: true }),
+	processRequest({
+		body: z.object({
+			group: z.object({
+				name: z.string(),
+			}),
+		})
+	}),
+	async function(req, res, next) {
+		try {
+			await req.board.updateGroup(req.params.avatarId, req.params.groupId, {
+				name: req.body.group.name,
+			});
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		res.end();
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
+);
+
+adminRouter.put("/b/:board/a/:avatarId/g/:groupId/control-order",
+	requireBoard("board", boardManager, { locked: true }),
+	processRequest({
+		body: z.object({
+			order: z.array(z.string()),
+		})
+	}),
+	async function(req, res, next) {
+		try {
+			await req.board.setGroupControlOrder(req.params.avatarId, req.params.groupId, req.body.order);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		res.end();
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
+);
+
+adminRouter.put("/b/:board/a/:avatarId/group-order",
+	processRequest({
+		body: z.object({
+			order: z.array(z.string()),
+		})
+	}),
+	requireBoard("board", boardManager, { locked: true }),
+	async function(req, res, next) {
+		try {
+			await req.board.setGroupOrder(req.params.avatarId, req.body.order);
+		} catch(err) {
+			err.statusCode = 400;
+			throw err;
+		}
+
+		res.end();
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
 );
 
 adminRouter.post("/b/:board/a/:avatarId/duplicate-control",
@@ -292,8 +439,8 @@ adminRouter.post("/b/:board/a/:avatarId/duplicate-control",
 			controlId: z.string(),
 		})
 	}),
-	requireBoard("board", boardManager),
-	async function(req, res) {
+	requireBoard("board", boardManager, { locked: true }),
+	async function(req, res, next) {
 		try {
 			await req.board.duplicateControl(req.params.avatarId, req.body.controlId);
 		} catch(err) {
@@ -301,8 +448,10 @@ adminRouter.post("/b/:board/a/:avatarId/duplicate-control",
 			throw err;
 		}
 
-		return res.end();
-	}
+		res.end();
+		return next();
+	},
+	unlockRequiredBoard(boardManager),
 )
 
 module.exports = { adminRouter };

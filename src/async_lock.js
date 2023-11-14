@@ -37,7 +37,8 @@ class AsyncLock {
 
 	release() {
 		const promise = this._queue.shift();
-		promise.resolve();
+
+		setTimeout(() => promise.resolve(), 0); // run the code that's waiting for the lock after we are finished with the current "thread"
 	}
 }
 
