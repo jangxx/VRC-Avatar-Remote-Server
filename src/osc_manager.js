@@ -47,6 +47,10 @@ class OscManager extends EventEmitter {
 			});
 		});
 
+		this._osc.on("error", err => {
+			console.log("OSC encountered an error:", err);
+		});
+
 		this._osc.open();
 	}
 
