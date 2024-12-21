@@ -10,6 +10,7 @@ class OscManager extends EventEmitter {
 
 		this._printInputs = false;
 		this._printOutputs = false;
+		this._logErrors = false;
 
 		this._osc = null;
 	}
@@ -17,6 +18,7 @@ class OscManager extends EventEmitter {
 	init() {
 		this._printInputs = this._config.getKey("osc", "log_all_inputs") === true;
 		this._printOutputs = this._config.getKey("osc", "log_all_outputs") === true;
+		this._logErrors = this._config.getKey("osc", "log_errors") === true;
 
 		const sendPort = this._config.getRequiredKey("osc", "output", "port");
 		const sendAddress = this._config.getRequiredKey("osc", "output", "address");
@@ -48,7 +50,9 @@ class OscManager extends EventEmitter {
 		});
 
 		this._osc.on("error", err => {
-			console.log("OSC encountered an error:", err);
+			if (this._logErrors) {
+				console.log("OSC encountered an error:", err);
+			}
 		});
 
 		this._osc.open();

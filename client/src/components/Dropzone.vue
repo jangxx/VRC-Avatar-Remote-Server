@@ -8,7 +8,13 @@
 			</template>
 		</n-empty>
 		<n-space :vertical="true" v-else-if="!loading">
-			<n-select :options="selectOptions" placeholder="Select an avatar" :value="selectedAvatar" :on-update:value="handleSelect" />
+			<n-select
+				:options="selectOptions"
+				placeholder="Select an avatar"
+				:value="selectedAvatar"
+				:on-update:value="handleSelect"
+				filterable
+			/>
 
 			<n-text>You can drop more files as well.</n-text>
 		</n-space>
@@ -36,7 +42,7 @@ export default {
 			return Object.values(this.foundAvatars).map(avatarData => {
 				// console.log(avatarData);
 				return { label: avatarData.name, value: avatarData.id };
-			});
+			}).sort((a, b) => a.label.localeCompare(b.label));
 		}
 	},
 	methods: {

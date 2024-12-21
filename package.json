@@ -1,6 +1,6 @@
 {
   "name": "vrc-osc-remote-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Makes VRC avatar parameters accessible remotely",
   "main": "index.js",
   "scripts": {

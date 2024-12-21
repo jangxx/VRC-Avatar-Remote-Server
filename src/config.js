@@ -14,6 +14,7 @@ const DEFAULT_CONFIG = {
 	osc: {
 		log_all_outputs: false,
 		log_all_inputs: false,
+		log_errors: false,
 		output: {
 			address: "localhost",
 			port: 9000,
