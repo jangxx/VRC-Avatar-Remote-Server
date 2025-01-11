@@ -1,6 +1,6 @@
 FROM node:16
 
-WORKDIR /usr/src/vrc-param-server
+WORKDIR /app
 
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
@@ -9,16 +9,19 @@ RUN npm install --legacy-peer-deps
 COPY . .
 
 # install and build frontend
-WORKDIR /usr/src/vrc-param-server/client
+WORKDIR /app/client
 RUN npm install
 RUN npm run build
 
-WORKDIR /usr/src/vrc-param-server
+WORKDIR /app
 EXPOSE 8080
 EXPOSE 9001/udp
 
 # create data directory
 RUN mkdir -p /data/config
+VOLUME /data/config
+
 RUN mkdir -p /data/icons
+VOLUME /data/icons
 
 CMD [ "node", "index.js", "/data/config/config.yml", "/data/icons" ]

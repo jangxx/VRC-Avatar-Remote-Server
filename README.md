@@ -1,6 +1,6 @@
-# VRChat OSC Remote Server
+# VRChat Avatar Remote Server
 
-A server to create "dashboards" to let other people control selected avatar parameters via a webinterface.
+A server to create "dashboards" to let other people control selected avatar parameters via a web interface.
 Each avatar is set up individually and the parameters can be controlled with a button, a toggle switch and a rotrary input (emulating some of the built-in Action Menu controls).
 
 There are three main way to install and run this server:

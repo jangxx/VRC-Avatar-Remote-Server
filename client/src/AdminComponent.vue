@@ -520,28 +520,33 @@ export default {
 			return {
 				name: this.droppedAvatar.data.name,
 				id: this.droppedAvatar.data.id,
-				parameters: this.droppedAvatar.data.parameters.filter(param => "input" in param).map(param => {
+				parameters: Object.fromEntries(this.droppedAvatar.data.parameters.filter(param => "input" in param).map(param => {
 					const supported = param.input.type === param.output.type;
 					const type = supported ? param.input.type : null;
 
-					return {
-						name: param.name,
-						inputAddress: param.input.address,
-						outputAddress: param.output.address,
-						supported,
-						type,
-					};
-				}),
+					return [
+						param.name,
+						{
+							name: param.name,
+							inputAddress: param.input.address,
+							outputAddress: param.output.address,
+							supported,
+							type,
+						}
+					];
+				})),
 			};
 		},
 		newControlSelectOptions() {
 			if (this.processedAvatarData === null) return [];
 
-			return this.processedAvatarData.parameters.map((param, index) => {
+			const parameters = Object.values(this.processedAvatarData.parameters).sort((a, b) => a.name.localeCompare(b.name));
+
+			return parameters.map((param, index) => {
 				if (param.supported) {
-					return { label: `${param.name} (${param.type})`, value: index };
+					return { label: `${param.name} (${param.type})`, value: param.name };
 				} else {
-					return { label: `${param.name} (Not supported)`, value: index, disabled: true };
+					return { label: `${param.name} (Not supported)`, value: param.name, disabled: true };
 				}
 			});
 		},
@@ -954,7 +959,7 @@ export default {
 		margin-bottom: 10px;
 	}
 
-	.group-content {
-	}
+//	.group-content {
+//	}
 }
 </style>

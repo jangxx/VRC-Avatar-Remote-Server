@@ -1,14 +1,22 @@
-version: "3.9"
 services:
-  vrc-param-server:
-    build: .
+  vrc-avatar-remote-server:
+    image: jangxx/vrc-avatar-remote-server:1.1.0
     ports:
       - "9001:9001/udp"
-      - "45000:8080"
+      - "8080:8080"
     restart: "unless-stopped"
     volumes:
       - "./config:/data/config"
+  cloudflared-quick:
+    image: cloudflare/cloudflared
+    profiles:
+      - cloudflare-quick
+    command: tunnel --url http://vrc-avatar-remote-server:8080
+    restart: "unless-stopped"
   cloudflared:
     image: cloudflare/cloudflared
-    command: tunnel --url http://vrc-param-server:8080
+    profiles:
+      - cloudflare
+    command: tunnel --no-autoupdate run --token $CLOUDFLARE_TOKEN --url http://vrc-avatar-remote-server:8080
     restart: "unless-stopped"
+    env_file: [ ".env" ]
