@@ -1,7 +1,7 @@
 const express = require("express");
 const fileUpload = require("express-fileupload");
 const { z } = require("zod");
-const { processRequest } = require("zod-express-middleware");
+const { processRequest } = require("../lib/zod-express-middleware");
 
 const { requireAdmin } = require("../require_login");
 const ServiceManager = require("../service_manager");

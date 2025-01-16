@@ -21,7 +21,7 @@ This readme documents how to do each of these options.
 
 1. Clone the repository
 2. `cd` into it
-3. Run `npm install --legacy-peer-deps` to install the required modules for the server
+3. Run `npm install` to install the required modules for the server
 4. `cd client`
 5. Run `npm install` to install the required modules for the frontend
 6. `npm run build` to build the frontend 
