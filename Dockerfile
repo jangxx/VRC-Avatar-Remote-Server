@@ -1,5 +1,9 @@
 FROM node:20-alpine
 
+LABEL org.opencontainers.image.source=https://github.com/jangxx/VRC-Avatar-Remote-Server
+LABEL org.opencontainers.image.description="VRChat Avatar Remote Server"
+LABEL org.opencontainers.image.licenses=MIT
+
 WORKDIR /app
 
 COPY package*.json ./
