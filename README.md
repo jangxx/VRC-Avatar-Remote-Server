@@ -28,12 +28,12 @@ Download `docker-compose.yml` from the root of the repository and put it somewhe
 To run the first time setup run
 
 ```bash
-docker compose run --rm vrc-param-server
+docker compose run --rm server
 ```
 
 The setup will ask you if you run in docker; answer this with `y`.
 Afterwards you have to create an admin password.
-If you want to change it later you can either remove the `admin.password` key from the config file (which is created in a folder named `config` next to the compose file) to summon the prompt again or go to a website like [bcrypt-generator.com](https://bcrypt-generator.com/) and "encrypt" your new password there before putting it into the config file.
+If you want to change it later, you can either remove the `admin.password` key from the config file (which is created in a folder named `config` next to the compose file) to summon the prompt again, or go to a website like [bcrypt-generator.com](https://bcrypt-generator.com/) and "encrypt" your new password there before putting it into the config file.
 
 Once the first time setup is complete you can run the server like this:
 
