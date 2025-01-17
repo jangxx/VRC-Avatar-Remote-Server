@@ -1,5 +1,5 @@
 services:
-  vrc-avatar-remote-server:
+  server:
     image: jangxx/vrc-avatar-remote-server:latest
     ports:
       - "9001:9001/udp"
@@ -7,13 +7,14 @@ services:
     restart: "unless-stopped"
     volumes:
       - "./config:/data/config"
+      - "./icons:/data/icons"
     networks:
       - default
   cloudflared-quick:
     image: cloudflare/cloudflared
     profiles:
       - cloudflare-quick
-    command: tunnel --url http://vrc-avatar-remote-server:8080
+    command: tunnel --url http://server:8080
     restart: "unless-stopped"
     networks:
       - default
@@ -21,7 +22,7 @@ services:
     image: cloudflare/cloudflared
     profiles:
       - cloudflare
-    command: tunnel --no-autoupdate run --token $CLOUDFLARE_TOKEN --url http://vrc-avatar-remote-server:8080
+    command: tunnel --no-autoupdate run --token $CLOUDFLARE_TOKEN --url http://server:8080
     restart: "unless-stopped"
     env_file: [ ".env" ]
     networks:
